@@ -445,12 +445,19 @@ struct ContentView: View {
         let ext = file.pathExtension.lowercased()
         
         if ext == "pdf" {
-            guard let pdf = PDFDocument(url: file), let page = pdf.page(at: 0), let text = page.string else { return nil }
-            return String(text.prefix(1500))
+            guard let pdf = PDFDocument(url: file) else { return "Encrypted or Invalid PDF" }
+            var fullText = ""
+            // Get text from first 3 pages
+            for i in 0..<min(pdf.pageCount, 3) {
+                if let pageText = pdf.page(at: i)?.string {
+                    fullText += pageText + " "
+                }
+            }
+            return String(fullText.prefix(2000))
             
         } else if ["txt", "md", "csv", "json"].contains(ext) {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { return nil }
-            return String(text.prefix(1500))
+            return String(text.prefix(2000))
             
         } else if ["png", "jpg", "jpeg", "heic", "tiff"].contains(ext) {
             guard let imageSource = CGImageSourceCreateWithURL(file as CFURL, nil),
@@ -464,35 +471,38 @@ struct ContentView: View {
             
             try? requestHandler.perform([textRequest, classifyRequest])
             
-            var imageDescription = ""
+            var imageDescription = "IMAGE CONTENT:\n"
             if let text = textRequest.results?.compactMap({ $0.topCandidates(1).first?.string }).joined(separator: " "), !text.isEmpty {
-                imageDescription += "Text in image: \(text)\n"
+                imageDescription += "- Text in image: \(text)\n"
             }
-            if let classifications = classifyRequest.results?.filter({ $0.hasMinimumRecall(0.7, forPrecision: 0.7) }).prefix(4).map({ $0.identifier }).joined(separator: ", ") {
-                imageDescription += "Image looks like: \(classifications)"
+            if let classifications = classifyRequest.results?.filter({ $0.hasMinimumRecall(0.6, forPrecision: 0.6) }).prefix(5).map({ $0.identifier }).joined(separator: ", ") {
+                imageDescription += "- Visual Classification: \(classifications)"
             }
-            return String(imageDescription.prefix(1500))
+            return String(imageDescription.prefix(2000))
             
         } else if ["mp4", "mov", "m4a", "mp3", "wav"].contains(ext) {
             let asset = AVURLAsset(url: file)
-            var mediaInfo = "Media File."
+            var mediaInfo = "MEDIA METADATA:\n"
             
             if let duration = try? await asset.load(.duration) {
-                mediaInfo += " Duration: \(Int(CMTimeGetSeconds(duration))) seconds."
+                mediaInfo += "- Duration: \(Int(CMTimeGetSeconds(duration))) seconds\n"
             }
+            
             let formats = try? await asset.load(.availableMetadataFormats)
             for format in formats ?? [] {
                 if let metadata = try? await asset.loadMetadata(for: format) {
                     for item in metadata {
-                        if let key = item.commonKey?.rawValue, let val = try? await item.load(.stringValue) {
-                            mediaInfo += " \(key): \(val)."
+                        if let key = item.commonKey?.rawValue {
+                            if let val = try? await item.load(.stringValue) {
+                                mediaInfo += "- \(key): \(val)\n"
+                            }
                         }
                     }
                 }
             }
-            return mediaInfo
+            return String(mediaInfo.prefix(2000))
         }
-        return nil
+        return "No specific content available for this file type."
     }
     
     @MainActor
