@@ -15,7 +15,13 @@ struct MediaOrganizerSettingsView: View {
     @AppStorage("createSubfolders") private var createSubfolders: Bool = true
     @AppStorage("applyFinderTags") private var applyFinderTags: Bool = true
     
+    // Casual Settings
+    @AppStorage("enableSounds") private var enableSounds: Bool = true
+    @AppStorage("enableNotifications") private var enableNotifications: Bool = true
+    @AppStorage("defaultCategory") private var defaultCategory: String = "Organized"
+    
     // Cloud Settings
+    @AppStorage("cloudProvider") private var cloudProvider: String = "OpenAI"
     @AppStorage("cloudEndpoint") private var cloudEndpoint: String = "https://api.openai.com/v1/chat/completions"
     @AppStorage("cloudApiKey") private var cloudApiKey: String = ""
     @AppStorage("cloudModel") private var cloudModel: String = "gpt-4o-mini"
@@ -38,54 +44,71 @@ struct MediaOrganizerSettingsView: View {
             updatesTab
                 .tabItem { Label("Updates", systemImage: "arrow.clockwise.circle") }
         }
-        .frame(width: 550, height: 480)
+        .frame(width: 500, height: 520)
         .padding()
     }
     
     var generalTab: some View {
-        VStack(spacing: 20) {
-            GroupBox(label: Label("Naming & Organization", systemImage: "doc.text.magnifyingglass")) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Picker("Format Template:", selection: $namingTemplate) {
-                        Text("Name (Default)").tag("Descriptive Name")
-                        Text("Category - Name").tag("Category - Descriptive Name")
-                        Text("Date - Name").tag("YYYY-MM-DD - Descriptive Name")
-                        Text("Date - Category - Name").tag("YYYY-MM-DD - Category - Descriptive Name")
+        ScrollView {
+            VStack(spacing: 20) {
+                GroupBox(label: Label("Personalize", systemImage: "paintbrush")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Picker("File Naming:", selection: $namingTemplate) {
+                            Text("Name Only").tag("Descriptive Name")
+                            Text("Category - Name").tag("Category - Descriptive Name")
+                            Text("Date - Name").tag("YYYY-MM-DD - Descriptive Name")
+                            Text("Date - Category - Name").tag("YYYY-MM-DD - Category - Descriptive Name")
+                        }
+                        .pickerStyle(.menu)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Special AI Instructions:")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            TextEditor(text: $customInstructions)
+                                .frame(height: 60)
+                                .padding(4)
+                                .background(Color(NSColor.textBackgroundColor))
+                                .cornerRadius(6)
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(NSColor.separatorColor), lineWidth: 1))
+                        }
                     }
-                    .pickerStyle(.menu)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Custom AI Instructions:")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        TextEditor(text: $customInstructions)
-                            .frame(height: 80)
-                            .padding(4)
-                            .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(6)
-                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(NSColor.separatorColor), lineWidth: 1))
+                    .padding(.vertical, 8)
+                }
+                
+                GroupBox(label: Label("Preferences", systemImage: "hand.tap")) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Toggle("Play sounds when finished", isOn: $enableSounds)
+                        Toggle("Send desktop notifications", isOn: $enableNotifications)
+                        
+                        HStack {
+                            Text("Default Folder:")
+                            TextField("e.g. Sorted", text: $defaultCategory)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 150)
+                        }
+                        .padding(.top, 4)
                     }
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.vertical, 8)
-            }
-            
-            GroupBox(label: Label("File Handling", systemImage: "folder.badge.plus")) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Toggle("Automatically create subfolders", isOn: $createSubfolders)
-                    Toggle("Apply macOS Finder tags", isOn: $applyFinderTags)
+                
+                GroupBox(label: Label("Automation", systemImage: "bolt.fill")) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Toggle("Automatically sort into folders", isOn: $createSubfolders)
+                        Toggle("Tag files for Spotlight search", isOn: $applyFinderTags)
+                    }
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.vertical, 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            
-            Spacer()
+            .padding()
         }
-        .padding()
     }
     
     var engineTab: some View {
         VStack(spacing: 20) {
-            Picker("AI Strategy", selection: $aiMode) {
+            Picker("Strategy", selection: $aiMode) {
                 Text("Native").tag(0)
                 Text("Ollama").tag(1)
                 Text("Cloud").tag(2)
@@ -99,7 +122,7 @@ struct MediaOrganizerSettingsView: View {
                         .foregroundStyle(.purple.gradient)
                     Text("Apple Intelligence Mode")
                         .font(.headline)
-                    Text("Uses the high-performance local engine we built. Fast, private, and free.")
+                    Text("Privacy first. Uses our custom on-device engine. Fast, free, and works offline.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -110,24 +133,75 @@ struct MediaOrganizerSettingsView: View {
                 Form {
                     Section("Ollama Settings") {
                         TextField("Model Name:", text: $localModel)
-                        Text("Endpoint: http://localhost:11434")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        LabeledContent("Connection:", value: "Local (http://localhost:11434)")
                     }
                 }
             } else {
-                Form {
-                    Section("Cloud Credentials") {
-                        TextField("Endpoint:", text: $cloudEndpoint)
-                        SecureField("API Key:", text: $cloudApiKey)
-                        TextField("Model Name:", text: $cloudModel)
+                VStack(alignment: .leading, spacing: 15) {
+                    Picker("Service Provider:", selection: $cloudProvider) {
+                        Text("OpenAI (GPT-4o)").tag("OpenAI")
+                        Text("Anthropic (Claude)").tag("Anthropic")
+                        Text("Groq (Llama 3)").tag("Groq")
+                        Text("Custom / Self-Hosted").tag("Custom")
                     }
+                    .pickerStyle(.menu)
+                    .onChange(of: cloudProvider) { newValue in
+                        updateCloudPresets(for: newValue)
+                    }
+                    
+                    Divider()
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("API Credentials")
+                            .font(.headline)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Endpoint URL")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            TextField("https://...", text: $cloudEndpoint)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("API Key")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            SecureField("Enter your key here", text: $cloudApiKey)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Model Identifier")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            TextField("e.g. gpt-4o", text: $cloudModel)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                    }
+                    .padding(.horizontal, 5)
                 }
             }
             
             Spacer()
         }
         .padding()
+    }
+    
+    private func updateCloudPresets(for provider: String) {
+        switch provider {
+        case "OpenAI":
+            cloudEndpoint = "https://api.openai.com/v1/chat/completions"
+            cloudModel = "gpt-4o-mini"
+        case "Anthropic":
+            cloudEndpoint = "https://api.anthropic.com/v1/messages"
+            cloudModel = "claude-3-5-sonnet-latest"
+        case "Groq":
+            cloudEndpoint = "https://api.groq.com/openai/v1/chat/completions"
+            cloudModel = "llama-3.1-70b-versatile"
+        default:
+            break
+        }
     }
     
     var updatesTab: some View {
