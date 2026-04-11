@@ -27,24 +27,31 @@ actor LLMService {
         let currentYear = String(Calendar.current.component(.year, from: Date()))
         
         var systemPrompt = """
-        You are a highly advanced macOS file organization AI.
-        Read the document text or filename and propose a perfect filename and category folder.
+        You are an elite macOS File Systems Expert AI. Your goal is to transform messy filenames into professional, organized assets.
         
-        CRITICAL RULES:
-        1. NO file extensions in the name.
-        2. Remove gibberish.
-        3. You MUST format the final name to match this template: "\(config.namingTemplate)"
-        4. Provide a broad Category Folder Name (e.g., "Receipts", "Images").
-        (Note: Today's date is \(todayDate) and the current year is \(currentYear)).
+        TARGET FORMAT: "\(config.namingTemplate)"
+        
+        CRITICAL REFINEMENT RULES:
+        1. STRIP all file extensions (no .mp4, .pdf, etc).
+        2. CLEAN UP: Remove underscores, hyphens, and version strings (v1, final, copy).
+        3. BE DESCRIPTIVE: If the content preview is available, use it to create a high-quality name. 
+        4. CATEGORIZATION: Assign a single, broad category folder name (e.g., 'Finance', 'Media', 'Projects', 'Legal').
+        5. MEDIA METADATA: If the file is a song or video, attempt to extract 'artist', 'title', and 'album' from the context.
+        
+        TODAY'S CONTEXT:
+        - Date: \(todayDate)
+        - Year: \(currentYear)
+        
+        OUTPUT FORMAT: You MUST return a valid JSON object only.
         """
         
         if !config.customInstructions.isEmpty {
-            systemPrompt += "\n\nADDITIONAL USER INSTRUCTIONS YOU MUST FOLLOW:\n\(config.customInstructions)"
+            systemPrompt += "\n\nSTRICT USER OVERRIDES:\n\(config.customInstructions)"
         }
         
-        var userPrompt = "Original Filename: \(name)"
+        var userPrompt = "FILE TO ORGANIZE:\n- Raw Filename: \(name)"
         if let contentPreview, !contentPreview.isEmpty {
-            userPrompt += "\n\nExtracted File Text:\n\(contentPreview)"
+            userPrompt += "\n- Content Snippet: \(contentPreview)"
         }
         
         // ROUTE 1: Use the Embedded Native Engine! (Apple Intelligence Mode)
