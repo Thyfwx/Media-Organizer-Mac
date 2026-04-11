@@ -5,9 +5,9 @@ set -e
 
 # Configuration
 APP_NAME="Media Organizer.app"
-VERSION="1.0"
+VERSION="Alpha-1.0"
 OUTPUT_DIR="Releases"
-OUTPUT_DMG="${OUTPUT_DIR}/Media-Organizer-v${VERSION}.dmg"
+OUTPUT_DMG="${OUTPUT_DIR}/Media-Organizer-${VERSION}.dmg"
 BACKGROUND_IMAGE="Scripts/dmg_background.png"
 STAGING_DIR="${OUTPUT_DIR}/Staging"
 
@@ -15,7 +15,7 @@ STAGING_DIR="${OUTPUT_DIR}/Staging"
 if [ -z "$1" ]; then
     echo "🔍 No app path provided. Searching Xcode DerivedData for the latest build..."
     LATEST_APP=$(find ~/Library/Developer/Xcode/DerivedData -name "Media Organizer.app" -type d -path "*/Build/Products/Debug/*" 2>/dev/null | head -n 1)
-    
+
     if [ -z "$LATEST_APP" ]; then
         echo "❌ Error: Could not find Media Organizer.app in DerivedData."
         echo "Usage: ./Scripts/build_release.sh /path/to/Media\ Organizer.app"
@@ -53,7 +53,7 @@ cp -a "${SOURCE_APP}" "${STAGING_DIR}/"
 # Build the DMG
 echo "🎨 Creating beautiful DMG window..."
 create-dmg \
-  --volname "Install Media Organizer" \
+  --volname "Media Organizer Alpha 1.0" \
   --volicon "Scripts/VolumeIcon.icns" \
   --background "${BACKGROUND_IMAGE}" \
   --window-pos 200 120 \

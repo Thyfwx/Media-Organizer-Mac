@@ -8,23 +8,23 @@ func drawIcon(isDark: Bool) -> NSImage {
     
     // Taller Pastel Tab
     let tabPath = NSBezierPath()
-    let tabTop: CGFloat = 880 // Increased from 744 to stick out more
+    let tabTop: CGFloat = 880 
     let tabBottom: CGFloat = 500
     
-    tabPath.move(to: NSPoint(x: 120, y: tabTop)) 
-    tabPath.line(to: NSPoint(x: 520, y: tabTop))
-    tabPath.curve(to: NSPoint(x: 580, y: tabTop - 60), controlPoint1: NSPoint(x: 560, y: tabTop), controlPoint2: NSPoint(x: 580, y: tabTop - 20))
-    tabPath.line(to: NSPoint(x: 580, y: tabBottom))
-    tabPath.line(to: NSPoint(x: 80, y: tabBottom))
-    tabPath.line(to: NSPoint(x: 80, y: tabTop - 40))
-    tabPath.curve(to: NSPoint(x: 120, y: tabTop), controlPoint1: NSPoint(x: 80, y: tabTop - 20), controlPoint2: NSPoint(x: 100, y: tabTop))
+    tabPath.move(to: NSPoint(x: 100, y: tabTop)) 
+    tabPath.line(to: NSPoint(x: 550, y: tabTop))
+    tabPath.curve(to: NSPoint(x: 600, y: tabTop - 60), controlPoint1: NSPoint(x: 580, y: tabTop), controlPoint2: NSPoint(x: 600, y: tabTop - 20))
+    tabPath.line(to: NSPoint(x: 600, y: tabBottom))
+    tabPath.line(to: NSPoint(x: 50, y: tabBottom))
+    tabPath.line(to: NSPoint(x: 50, y: tabTop - 40))
+    tabPath.curve(to: NSPoint(x: 100, y: tabTop), controlPoint1: NSPoint(x: 50, y: tabTop - 20), controlPoint2: NSPoint(x: 75, y: tabTop))
     
-    // More cute pastel colors! Pink -> Purple -> Blue -> Mint Green
+    // Super Cute Vibrant Pastels
     let tabColors = [
-        NSColor(calibratedRed: 0.98, green: 0.75, blue: 0.83, alpha: 1.0).cgColor, // Pastel Pink
-        NSColor(calibratedRed: 0.88, green: 0.76, blue: 0.99, alpha: 1.0).cgColor, // Pastel Purple
-        NSColor(calibratedRed: 0.63, green: 0.77, blue: 0.99, alpha: 1.0).cgColor, // Pastel Blue
-        NSColor(calibratedRed: 0.60, green: 0.93, blue: 0.83, alpha: 1.0).cgColor  // Pastel Mint Green
+        NSColor(calibratedRed: 1.0, green: 0.7, blue: 0.85, alpha: 1.0).cgColor,  // Vibrant Pink
+        NSColor(calibratedRed: 0.85, green: 0.75, blue: 1.0, alpha: 1.0).cgColor, // Vibrant Purple
+        NSColor(calibratedRed: 0.65, green: 0.85, blue: 1.0, alpha: 1.0).cgColor, // Vibrant Blue
+        NSColor(calibratedRed: 0.7, green: 1.0, blue: 0.9, alpha: 1.0).cgColor    // Vibrant Mint
     ] as CFArray
     
     let tabGradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: tabColors, locations: [0.0, 0.33, 0.66, 1.0])!
@@ -36,31 +36,30 @@ func drawIcon(isDark: Bool) -> NSImage {
     
     context.saveGState()
     tabPath.setClip()
-    // Diagonal gradient for a dynamic pastel mix
-    context.drawLinearGradient(tabGradient, start: CGPoint(x: 80, y: tabTop), end: CGPoint(x: 580, y: tabBottom), options: [])
+    context.drawLinearGradient(tabGradient, start: CGPoint(x: 50, y: tabTop), end: CGPoint(x: 600, y: tabBottom), options: [])
     context.restoreGState()
     
-    // Main Folder Body (Play Button Removed!)
-    let bodyRect = NSRect(x: 80, y: 144, width: 864, height: 560)
-    let bodyPath = NSBezierPath(roundedRect: bodyRect, xRadius: 60, yRadius: 60)
+    // Main Folder Body (LONGER - 924px wide)
+    let bodyRect = NSRect(x: 50, y: 144, width: 924, height: 560)
+    let bodyPath = NSBezierPath(roundedRect: bodyRect, xRadius: 70, yRadius: 70)
     
     let bodyColors: CFArray
     if isDark {
         bodyColors = [
-            NSColor(calibratedWhite: 0.25, alpha: 0.95).cgColor,
-            NSColor(calibratedWhite: 0.12, alpha: 0.95).cgColor
+            NSColor(calibratedWhite: 0.2, alpha: 0.9).cgColor,
+            NSColor(calibratedWhite: 0.1, alpha: 0.9).cgColor
         ] as CFArray
     } else {
         bodyColors = [
-            NSColor(calibratedWhite: 0.98, alpha: 0.95).cgColor,
-            NSColor(calibratedWhite: 0.92, alpha: 0.95).cgColor
+            NSColor(calibratedWhite: 1.0, alpha: 0.9).cgColor,
+            NSColor(calibratedWhite: 0.95, alpha: 0.9).cgColor
         ] as CFArray
     }
     
     let bodyGradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: bodyColors, locations: [0.0, 1.0])!
     
     context.saveGState()
-    context.setShadow(offset: CGSize(width: 0, height: -25), blur: 35, color: NSColor.black.withAlphaComponent(isDark ? 0.6 : 0.3).cgColor)
+    context.setShadow(offset: CGSize(width: 0, height: -30), blur: 40, color: NSColor.black.withAlphaComponent(isDark ? 0.7 : 0.25).cgColor)
     bodyPath.fill()
     context.restoreGState()
     
@@ -69,23 +68,17 @@ func drawIcon(isDark: Bool) -> NSImage {
     context.drawLinearGradient(bodyGradient, start: CGPoint(x: 0, y: 704), end: CGPoint(x: 0, y: 144), options: [])
     context.restoreGState()
     
-    // Glass highlight
-    let highlightPath = NSBezierPath()
-    highlightPath.move(to: NSPoint(x: 80, y: 704))
-    highlightPath.line(to: NSPoint(x: 944, y: 704))
-    highlightPath.line(to: NSPoint(x: 944, y: 560))
-    highlightPath.line(to: NSPoint(x: 80, y: 560))
-    highlightPath.close()
-    
+    // Glossy shine across the long body
+    let highlightRect = NSRect(x: 50, y: 560, width: 924, height: 144)
     context.saveGState()
     bodyPath.setClip()
-    NSColor.white.withAlphaComponent(isDark ? 0.05 : 0.4).setFill()
-    highlightPath.fill()
+    NSColor.white.withAlphaComponent(isDark ? 0.08 : 0.45).setFill()
+    highlightRect.fill()
     context.restoreGState()
     
-    // Border
-    NSColor.white.withAlphaComponent(isDark ? 0.15 : 0.6).setStroke()
-    bodyPath.lineWidth = 4
+    // Clean border
+    NSColor.white.withAlphaComponent(isDark ? 0.2 : 0.7).setStroke()
+    bodyPath.lineWidth = 5
     bodyPath.stroke()
     
     image.unlockFocus()
@@ -101,4 +94,4 @@ func saveImage(_ image: NSImage, to path: String) {
 
 saveImage(drawIcon(isDark: false), to: "icon_light.png")
 saveImage(drawIcon(isDark: true), to: "icon_dark.png")
-print("Successfully generated light and dark icons with cute pastels and NO play button!")
+print("Successfully generated extra-long vibrant pastel icons!")
