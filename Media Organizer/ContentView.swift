@@ -11,29 +11,8 @@ import AppKit
 import PDFKit
 import Vision
 import AVFoundation 
+import UserNotifications
 import QuickLookThumbnailing
-
-struct ProposedChange: Identifiable {
-    let id = UUID()
-    let originalURL: URL
-    var proposedName: String
-    var category: String
-    var artist: String?
-    var title: String?
-    var album: String?
-    var thumbnail: NSImage?
-    
-    var toMetadata: FileMetadata {
-        FileMetadata(proposedName: proposedName, category: category, artist: artist, title: title, album: album)
-    }
-}
-
-struct ProcessedFileRecord: Identifiable {
-    let id = UUID()
-    let originalURL: URL
-    let originalName: String
-    let finalURL: URL
-}
 
 struct ContentView: View {
     @State private var isDropTargeted = false
@@ -500,6 +479,7 @@ struct ContentView: View {
         return nil
     }
     
+    @MainActor
     private func analyzeQueue() async {
         isProcessing = true
         shouldStop = false
@@ -508,15 +488,20 @@ struct ContentView: View {
         processedFilesCount = 0
         
         let config: LLMConfig
-        if aiMode == 0 || aiMode == 1 {
-            config = LLMConfig(endpoint: URL(string: "http://localhost:11434/v1/chat/completions")!, apiKey: "local", model: localModel, namingTemplate: namingTemplate, customInstructions: customInstructions)
+        if aiMode == 0 {
+            // Apple Intelligence (Native On-Device)
+            config = LLMConfig(engineType: .appleIntelligence, endpoint: URL(string: "http://localhost")!, apiKey: "", model: "embedded", namingTemplate: namingTemplate, customInstructions: customInstructions)
+        } else if aiMode == 1 {
+            // Local Ollama
+            config = LLMConfig(engineType: .localOllama, endpoint: URL(string: "http://localhost:11434/v1/chat/completions")!, apiKey: "local", model: localModel, namingTemplate: namingTemplate, customInstructions: customInstructions)
         } else {
-            config = LLMConfig(endpoint: URL(string: cloudEndpoint) ?? URL(string: "https://api.openai.com/v1/chat/completions")!, apiKey: cloudApiKey, model: cloudModel, namingTemplate: namingTemplate, customInstructions: customInstructions)
+            // Cloud API
+            config = LLMConfig(engineType: .cloudAPI, endpoint: URL(string: cloudEndpoint) ?? URL(string: "https://api.openai.com/v1/chat/completions")!, apiKey: cloudApiKey, model: cloudModel, namingTemplate: namingTemplate, customInstructions: customInstructions)
         }
         
         let llm = LLMService(config: config)
         
-        if aiMode == 0 || aiMode == 1 {
+        if aiMode == 0 {
             do {
                 isDownloadingModel = true
                 try await llm.ensureModelExists()
@@ -557,6 +542,9 @@ struct ContentView: View {
                 proposedChanges.append(change)
                 processedFilesCount += 1
             } catch {
+                let nsError = error as NSError
+                print("Analysis Error: \(nsError.localizedDescription)")
+                
                 let fallback = ProposedChange(
                     originalURL: file,
                     proposedName: file.deletingPathExtension().lastPathComponent,
@@ -579,6 +567,7 @@ struct ContentView: View {
         }
     }
     
+    @MainActor
     private func executeChanges() async {
         withAnimation {
             isReviewing = false
@@ -630,11 +619,28 @@ struct ContentView: View {
         if !shouldStop {
             statusMessage = "Done!"
             NSSound(named: "Glass")?.play()
+            sendNotification(title: "Media Organized!", body: "Successfully organized \(processedFilesCount) file(s).")
             try? await Task.sleep(for: .seconds(2))
         }
         resetQueue()
     }
     
+    private func sendNotification(title: String, body: String) {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+            center.add(request)
+        }
+    }
+    
+    @MainActor
     private func resetQueue() {
         for url in securedURLs { url.stopAccessingSecurityScopedResource() }
         for folder in securedFolders { folder.stopAccessingSecurityScopedResource() }
