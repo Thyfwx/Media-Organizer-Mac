@@ -9,18 +9,21 @@ struct LLMConfig {
     var endpoint: URL
     var apiKey: String
     var model: String
-    var namingTemplate: String // NEW: Added template to config
+    var namingTemplate: String
+    var customInstructions: String // NEW
     
     static let localOllama = LLMConfig(
         endpoint: URL(string: "http://localhost:11434/v1/chat/completions")!,
         apiKey: "ollama-local",
         model: "llama3.2",
-        namingTemplate: "Descriptive Name"
+        namingTemplate: "Descriptive Name",
+        customInstructions: ""
     )
 }
 
 struct FileMetadata: Codable {
     let proposedName: String
+    let category: String
     let artist: String?
     let title: String?
     let album: String?
@@ -65,29 +68,36 @@ actor LLMService {
         }
     }
     
-    // UPGRADED: Massive improvements to the System Prompt!
     func analyzeFile(name: String, contentPreview: String?) async throws -> FileMetadata {
         
-        // Grab the current date so the AI has context
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         let todayDate = formatter.string(from: Date())
         let currentYear = String(Calendar.current.component(.year, from: Date()))
         
-        let systemPrompt = """
+        var systemPrompt = """
         You are a highly advanced, expert macOS file organization AI.
-        Read the document text or filename and propose a perfect, organized filename.
+        Read the document text or filename and propose a perfect filename and category folder.
         
         CRITICAL RULES:
-        1. NO file extensions in the name (e.g., remove .pdf, .mp4).
-        2. Remove gibberish, messy numbers, or generic names like "IMG_1023" or "Receipt (2)".
-        3. Determine exactly what the document is about and create a clean, highly descriptive name.
-        4. You MUST format the final name to match this template requested by the user: "\(config.namingTemplate)"
-        (Note: Today's date is \(todayDate) and the current year is \(currentYear). If the document text contains a different specific date, use the document's date instead).
+        1. NO file extensions in the name.
+        2. Remove gibberish and messy numbers.
+        3. You MUST format the final name to match this template: "\(config.namingTemplate)"
+        4. Provide a broad, generic Category Folder Name for this file (e.g., "Receipts", "Taxes", "Images", "Audio", "Work Documents").
+        (Note: Today's date is \(todayDate) and the current year is \(currentYear)).
+        """
+        
+        // INJECT CUSTOM USER RULES
+        if !config.customInstructions.isEmpty {
+            systemPrompt += "\n\nADDITIONAL USER INSTRUCTIONS YOU MUST FOLLOW:\n\(config.customInstructions)"
+        }
+        
+        systemPrompt += """
         
         Respond ONLY with a valid JSON object matching this strict structure:
         {
           "proposedName": "The Final Formatted Name",
+          "category": "The Folder Category Name",
           "artist": "Extracted Artist or null",
           "title": "Extracted Title or null",
           "album": "Extracted Album or null"
@@ -96,7 +106,7 @@ actor LLMService {
         
         var userPrompt = "Original Filename: \(name)"
         if let contentPreview, !contentPreview.isEmpty {
-            userPrompt += "\n\nExtracted File Text:\n\(contentPreview)"
+            userPrompt += "\n\nExtracted File Data:\n\(contentPreview)"
         }
         
         let payload: [String: Any] = [
