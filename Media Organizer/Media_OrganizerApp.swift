@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 @main
 struct Media_OrganizerApp: App {
@@ -13,6 +14,10 @@ struct Media_OrganizerApp: App {
         WindowGroup {
             ContentView()
                 .edgesIgnoringSafeArea(.top)
+                // NEW: Triggers the background model download on launch!
+                .task {
+                    try? await EmbeddedAIEngine.shared.loadModel()
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
@@ -20,7 +25,6 @@ struct Media_OrganizerApp: App {
         Settings {
             MediaOrganizerSettingsView()
         }
-        // NEW: Native macOS "About" Screen Menu!
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About Media Organizer") {
