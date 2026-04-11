@@ -53,7 +53,7 @@ cp -a "${SOURCE_APP}" "${STAGING_DIR}/"
 # Build the DMG
 echo "🎨 Creating beautiful DMG window..."
 create-dmg \
-  --volname "Media Organizer Alpha 1.0" \
+  --volname "Media Organizer Setup" \
   --volicon "Scripts/VolumeIcon.icns" \
   --background "${BACKGROUND_IMAGE}" \
   --window-pos 200 120 \
