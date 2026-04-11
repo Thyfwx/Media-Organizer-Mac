@@ -7,7 +7,7 @@
       "size" : "16x16"
     },
     {
-      "filename" : "icon_16x16@2x.png",
+      "filename" : "icon_32x32.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "16x16"
@@ -19,7 +19,7 @@
       "size" : "32x32"
     },
     {
-      "filename" : "icon_32x32@2x.png",
+      "filename" : "icon_128x128.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "32x32"
@@ -31,7 +31,7 @@
       "size" : "128x128"
     },
     {
-      "filename" : "icon_128x128@2x.png",
+      "filename" : "icon_256x256.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "128x128"
@@ -43,7 +43,7 @@
       "size" : "256x256"
     },
     {
-      "filename" : "icon_256x256@2x.png",
+      "filename" : "icon_512x512.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "256x256"
@@ -79,7 +79,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "icon_16x16@2x_dark.png",
+      "filename" : "icon_32x32_dark.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "16x16"
@@ -103,7 +103,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "icon_32x32@2x_dark.png",
+      "filename" : "icon_128x128_dark.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "32x32"
@@ -127,7 +127,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "icon_128x128@2x_dark.png",
+      "filename" : "icon_256x256_dark.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "128x128"
@@ -151,7 +151,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "icon_256x256@2x_dark.png",
+      "filename" : "icon_512x512_dark.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "256x256"
