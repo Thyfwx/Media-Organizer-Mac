@@ -6,10 +6,13 @@
 import SwiftUI
 
 struct MediaOrganizerSettingsView: View {
-    @AppStorage("aiMode") private var aiMode: Int = 0 // 0 = Apple Intelligence, 1 = Local, 2 = Custom Cloud
-    
-    // NEW: Custom Naming Templates
+    @AppStorage("aiMode") private var aiMode: Int = 0 
     @AppStorage("namingTemplate") private var namingTemplate: String = "Descriptive Name"
+    @AppStorage("customInstructions") private var customInstructions: String = "" // NEW: Custom Rules
+    
+    // Organization Preferences
+    @AppStorage("createSubfolders") private var createSubfolders: Bool = true
+    @AppStorage("applyFinderTags") private var applyFinderTags: Bool = true
     
     // Cloud Settings
     @AppStorage("cloudEndpoint") private var cloudEndpoint: String = "https://api.openai.com/v1/chat/completions"
@@ -21,31 +24,53 @@ struct MediaOrganizerSettingsView: View {
     
     var body: some View {
         TabView {
+            generalTab
+                .tabItem { Label("General", systemImage: "folder.badge.gearshape") }
             engineTab
-                .tabItem {
-                    Label("AI Engine", systemImage: "cpu")
-                }
+                .tabItem { Label("AI Engine", systemImage: "cpu") }
         }
-        .frame(width: 480, height: 420) // Made slightly taller to fit the new templates
+        .frame(width: 500, height: 450)
     }
     
-    var engineTab: some View {
+    var generalTab: some View {
         Form {
-            // NEW: Naming Templates UI
             Section(header: Text("Naming Rules").bold()) {
                 Picker("Format Template:", selection: $namingTemplate) {
                     Text("Descriptive Name (Default)").tag("Descriptive Name")
                     Text("Date - Name (e.g., 2026-04-10 - Receipt)").tag("YYYY-MM-DD - Descriptive Name")
                     Text("Name (Year) (e.g., Receipt (2026))").tag("Descriptive Name (YYYY)")
                 }
-                Text("The AI will automatically format your files to match this template.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.bottom, 8)
+                
+                // NEW: Custom Instructions for the AI
+                VStack(alignment: .leading) {
+                    Text("Custom AI Instructions (Optional):")
+                    TextField("e.g. Translate to Spanish, or always prefix with 'Work -'", text: $customInstructions, axis: .vertical)
+                        .lineLimit(3...6)
+                        .textFieldStyle(.roundedBorder)
+                }
+                .padding(.top, 4)
             }
             
-            Divider().padding(.bottom, 8)
+            Divider().padding(.vertical, 8)
             
+            Section(header: Text("Organization Preferences").bold()) {
+                Toggle("Auto-Sort into Subfolders", isOn: $createSubfolders)
+                Text("If enabled, the AI will create folders (like 'Receipts' or 'Audio') and move the files inside them.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 6)
+                
+                Toggle("Apply Native macOS Finder Tags", isOn: $applyFinderTags)
+                Text("If enabled, the AI will color-code and tag files in Finder so you can search them easily.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(20)
+    }
+    
+    var engineTab: some View {
+        Form {
             Picker("Processing Engine:", selection: $aiMode) {
                 Text("✨ Apple Intelligence").tag(0)
                 Text("Local Ollama").tag(1)
@@ -53,6 +78,8 @@ struct MediaOrganizerSettingsView: View {
             }
             .pickerStyle(.radioGroup)
             .padding(.bottom, 10)
+            
+            Divider().padding(.bottom, 10)
             
             if aiMode == 0 {
                 VStack(alignment: .leading, spacing: 12) {
