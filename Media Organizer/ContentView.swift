@@ -18,34 +18,37 @@ struct ContentView: View {
     @State private var isDropTargeted = false
     @State private var queuedFiles: [URL] = []
     @State private var proposedChanges: [ProposedChange] = []
-    
     @State private var processedHistory: [ProcessedFileRecord] = []
+    
+    @State private var isProcessing = false
+    @State private var isReviewing = false
+    @State private var totalFiles = 0
+    @State private var processedFilesCount = 0
+    @State private var statusMessage = ""
+    @State private var lastError: String? = nil
     @State private var showHistory = false
+    @State private var isDownloadingModel = false
+    @State private var shouldStop = false
+    @State private var gradientAnimation = false
+    @State private var rotationAngle: Double = 0
     
     @State private var securedURLs: [URL] = []
     @State private var securedFolders: [URL] = []
     
-    @State private var isProcessing = false
-    @State private var isReviewing = false
-    @State private var isDownloadingModel = false
-    @State private var shouldStop = false
-    @State private var processedFilesCount = 0
-    @State private var totalFiles = 0
-    @State private var statusMessage = ""
-    @State private var lastError: String? = nil
-    
-    @State private var rotationAngle: Double = 0
-    @State private var gradientAnimation = false
-    
     @AppStorage("aiMode") private var aiMode: Int = 0
     @AppStorage("namingTemplate") private var namingTemplate: String = "Descriptive Name"
     @AppStorage("customInstructions") private var customInstructions: String = ""
-    @AppStorage("createSubfolders") private var createSubfolders: Bool = true
-    @AppStorage("applyFinderTags") private var applyFinderTags: Bool = true
     @AppStorage("cloudEndpoint") private var cloudEndpoint: String = "https://api.openai.com/v1/chat/completions"
     @AppStorage("cloudApiKey") private var cloudApiKey: String = ""
     @AppStorage("cloudModel") private var cloudModel: String = "gpt-4o-mini"
     @AppStorage("localModel") private var localModel: String = "llama3.2"
+    @AppStorage("createSubfolders") private var createSubfolders: Bool = true
+    @AppStorage("applyFinderTags") private var applyFinderTags: Bool = true
+    
+    // NEW: Casual Settings
+    @AppStorage("enableSounds") private var enableSounds: Bool = true
+    @AppStorage("enableNotifications") private var enableNotifications: Bool = true
+    @AppStorage("defaultCategory") private var defaultCategory: String = "Organized"
     
     var body: some View {
         ZStack {
@@ -113,7 +116,7 @@ struct ContentView: View {
             guard !isReviewing && !isProcessing else { return false }
             
             // Play a cute "Pop" sound when files are dropped!
-            NSSound(named: "Pop")?.play()
+            if enableSounds { NSSound(named: "Pop")?.play() }
             
             lastError = nil
             var gatheredURLs: [URL] = []
@@ -150,113 +153,49 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - UI COMPONENTS
+    // MARK: - COMPONENTS
     
-    private var historyPopover: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("Recently Organized")
-                .font(.headline)
-                .padding()
-            
-            Divider()
-            
-            ScrollView {
-                VStack(spacing: 8) {
-                    ForEach(processedHistory.reversed()) { record in
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(record.finalURL.lastPathComponent)
-                                    .font(.subheadline)
-                                    .lineLimit(1)
-                                Text("Was: \(record.originalName)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Spacer()
-                            
-                            Button(action: { undoMove(for: record) }) {
-                                Image(systemName: "arrow.uturn.backward")
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(.orange)
-                            .help("Undo this change")
-                            
-                            Button(action: {
-                                NSWorkspace.shared.activateFileViewerSelecting([record.finalURL])
-                            }) {
-                                Image(systemName: "magnifyingglass")
-                            }
-                            .buttonStyle(.plain)
-                            .help("Show in Finder")
-                        }
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 12)
-                    }
-                }
-                .padding(.vertical, 8)
-            }
-        }
-        .frame(width: 350, height: 350)
-    }
-    
-    private var mainScreen: some View {
-        VStack(spacing: 20) {
+    var mainScreen: some View {
+        VStack(spacing: 25) {
             Spacer()
             
             ZStack {
                 Circle()
-                    .strokeBorder(Color.primary.opacity(0.1), lineWidth: 4)
-                    .frame(width: 90, height: 90)
-                
-                if isProcessing || isDownloadingModel {
-                    Circle()
-                        .trim(from: 0, to: 0.75)
-                        .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                        .frame(width: 90, height: 90)
-                        .rotationEffect(.degrees(rotationAngle))
-                        .onAppear {
-                            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
-                                rotationAngle = 360
-                            }
-                        }
-                }
+                    .fill(Color.accentColor.opacity(0.1))
+                    .frame(width: 140, height: 140)
                 
                 Image(systemName: isDownloadingModel ? "icloud.and.arrow.down.fill" : (isProcessing ? "sparkles" : "tray.and.arrow.down.fill"))
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 36, height: 36)
-                    .foregroundStyle(isDropTargeted || isProcessing || isDownloadingModel ? Color.accentColor : Color.primary.opacity(0.7))
-            }
-            .padding(.bottom, 8)
-            
-            if isDownloadingModel {
-                Text("Preparing Intelligence...")
-                    .font(.title3.weight(.medium))
-            } else if isProcessing {
-                Text(statusMessage)
-                    .font(.title3.weight(.medium))
-            } else if queuedFiles.isEmpty {
-                Text(isDropTargeted ? "Drop to Queue" : "Drag & Drop Files Here")
-                    .font(.title3.weight(.medium))
-            } else {
-                Text("\(queuedFiles.count) File(s) Ready")
-                    .font(.title3.weight(.medium))
+                    .font(.system(size: 60))
+                    .foregroundStyle(Color.accentColor.gradient)
+                    .rotationEffect(.degrees(isProcessing ? rotationAngle : 0))
+                    .animation(isProcessing ? .linear(duration: 2).repeatForever(autoreverses: false) : .default, value: rotationAngle)
+                    .onAppear { if isProcessing { rotationAngle = 360 } }
             }
             
-            if isProcessing || isDownloadingModel {
-                VStack(spacing: 12) {
+            VStack(spacing: 10) {
+                Text(isProcessing ? "Analyzing Media..." : (queuedFiles.isEmpty ? "Drag Media Here" : "\(queuedFiles.count) Files Queued"))
+                    .font(.title2).bold()
+                
+                if !statusMessage.isEmpty {
+                    Text(statusMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            if isProcessing {
+                VStack(spacing: 8) {
                     ProgressView(value: Double(processedFilesCount), total: Double(totalFiles))
                         .progressViewStyle(.linear)
-                        .frame(width: 220)
-                        .tint(.accentColor)
+                        .frame(width: 250)
                     
-                    Button(role: .destructive, action: { shouldStop = true }) {
-                        Text("Stop Processing")
-                            .font(.callout.weight(.medium))
-                    }
-                    .buttonStyle(.borderless)
-                    .padding(.top, 4)
+                    Text("\(processedFilesCount) of \(totalFiles)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    Button("Stop") { shouldStop = true }
+                        .buttonStyle(.link)
+                        .foregroundStyle(.red)
                 }
             } else if !queuedFiles.isEmpty {
                 HStack(spacing: 16) {
@@ -267,118 +206,157 @@ struct ContentView: View {
                     .controlSize(.large)
                     
                     Button(action: { Task { await analyzeQueue() } }) {
-                        Text("Analyze & Review")
+                        Text("Analyze Now")
                             .bold()
-                            .frame(width: 140)
+                            .frame(width: 120)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .tint(.accentColor)
                 }
-                .padding(.top, 4)
             }
             
-            if let lastError {
-                Text(lastError)
+            if let error = lastError {
+                Text(error)
                     .font(.caption)
                     .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 4)
+                    .padding()
+                    .background(RoundedRectangle(cornerRadius: 8).fill(.red.opacity(0.1)))
             }
             
             Spacer()
-            
-            Text("Alpha 1.0 • By Xavier Scott")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary.opacity(0.6))
-                .padding(.bottom, 10)
         }
-        .padding(.top, 40)
-        .padding(.horizontal, 30)
     }
     
-    private var reviewScreen: some View {
+    var reviewScreen: some View {
         VStack(spacing: 0) {
-            Text("Review Proposed Changes")
-                .font(.title2.weight(.bold))
-                .padding(.top, 40)
-                .padding(.bottom, 16)
+            HStack {
+                Text("Review Proposed Changes")
+                    .font(.headline)
+                Spacer()
+                Text("\(proposedChanges.count) items")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
             
-            ScrollView {
-                VStack(spacing: 12) {
-                    ForEach(0..<proposedChanges.count, id: \.self) { index in
-                        VStack(alignment: .leading, spacing: 6) {
+            List {
+                ForEach($proposedChanges) { $change in
+                    HStack(spacing: 12) {
+                        if let thumb = change.thumbnail {
+                            Image(nsImage: thumb)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 44, height: 44)
+                                .cornerRadius(4)
+                        } else {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(.secondary.opacity(0.2))
+                                .frame(width: 44, height: 44)
+                                .overlay(Image(systemName: "doc").foregroundStyle(.secondary))
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            TextField("Name", text: $change.proposedName)
+                                .textFieldStyle(.plain)
+                                .font(.body.bold())
+                            
                             HStack {
-                                Text(proposedChanges[index].originalURL.lastPathComponent)
+                                Image(systemName: "folder")
+                                TextField("Category", text: $change.category)
+                                    .textFieldStyle(.plain)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                Spacer()
-                            }
-                            
-                            HStack(spacing: 12) {
-                                if let thumb = proposedChanges[index].thumbnail {
-                                    Image(nsImage: thumb)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 44, height: 44)
-                                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                                } else {
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(Color.secondary.opacity(0.2))
-                                        .frame(width: 44, height: 44)
-                                        .overlay(Image(systemName: "doc").foregroundStyle(.secondary))
-                                }
-                                
-                                VStack(spacing: 4) {
-                                    TextField("Proposed Name", text: $proposedChanges[index].proposedName)
-                                        .textFieldStyle(.roundedBorder)
-                                    
-                                    if createSubfolders {
-                                        TextField("Folder", text: $proposedChanges[index].category)
-                                            .textFieldStyle(.roundedBorder)
-                                    }
-                                }
                             }
                         }
-                        .padding(12)
-                        .background(Color.primary.opacity(0.05))
-                        .cornerRadius(10)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            if let idx = proposedChanges.firstIndex(where: { $0.id == change.id }) {
+                                proposedChanges.remove(at: idx)
+                            }
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
+                    .padding(.vertical, 4)
                 }
-                .padding(.horizontal, 20)
             }
             
-            Divider().padding(.vertical, 10)
+            Divider()
             
             HStack {
-                Button(role: .cancel, action: {
-                    queuedFiles = proposedChanges.map { $0.originalURL }
-                    proposedChanges.removeAll()
-                    withAnimation { isReviewing = false }
-                }) {
-                    Text("Cancel")
-                        .frame(width: 80)
+                Button("Cancel") {
+                    withAnimation {
+                        isReviewing = false
+                        resetQueue()
+                    }
                 }
-                .controlSize(.large)
                 .keyboardShortcut(.cancelAction)
                 
                 Spacer()
                 
-                Button(action: { Task { await executeChanges() } }) {
-                    Text("Confirm & Organize")
-                        .bold()
-                        .frame(width: 160)
+                Button("Organize All") {
+                    Task { await executeChanges() }
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .tint(.accentColor)
                 .keyboardShortcut(.defaultAction)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
+            .padding()
+        }
+    }
+    
+    var historyPopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Recent History")
+                    .font(.headline)
+                Spacer()
+                Button("Clear All") { processedHistory.removeAll() }
+                    .buttonStyle(.link)
+                    .font(.caption)
+            }
+            .padding([.top, .horizontal])
+            
+            Divider()
+            
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(processedHistory.reversed()) { record in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(record.finalURL.lastPathComponent)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .lineLimit(1)
+                                Text("from: \(record.originalName)")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Button(action: { undoMove(for: record) }) {
+                                Image(systemName: "arrow.uturn.backward")
+                                    .font(.system(size: 10))
+                            }
+                            .buttonStyle(.plain)
+                            .help("Undo this move")
+                            
+                            Button(action: { NSWorkspace.shared.activateFileViewerSelecting([record.finalURL]) }) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 10))
+                            }
+                            .buttonStyle(.plain)
+                            .help("Show in Finder")
+                        }
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.05)))
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .frame(width: 300, height: 400)
         }
     }
     
@@ -574,7 +552,7 @@ struct ContentView: View {
                 let fallback = ProposedChange(
                     originalURL: file,
                     proposedName: file.deletingPathExtension().lastPathComponent,
-                    category: "Unsorted",
+                    category: defaultCategory,
                     artist: nil, title: nil, album: nil,
                     thumbnail: thumbnail
                 )
@@ -644,8 +622,10 @@ struct ContentView: View {
         
         if !shouldStop {
             statusMessage = "Done!"
-            NSSound(named: "Glass")?.play()
-            sendNotification(title: "Media Organized!", body: "Successfully organized \(processedFilesCount) file(s).")
+            if enableSounds { NSSound(named: "Glass")?.play() }
+            if enableNotifications {
+                sendNotification(title: "Media Organized!", body: "Successfully organized \(processedFilesCount) file(s).")
+            }
             try? await Task.sleep(for: .seconds(2))
         }
         resetQueue()
@@ -674,8 +654,6 @@ struct ContentView: View {
         securedFolders.removeAll()
         
         withAnimation {
-            totalFiles = 0
-            processedFilesCount = 0
             statusMessage = ""
             isProcessing = false
             isDownloadingModel = false
