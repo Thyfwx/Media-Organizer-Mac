@@ -38,7 +38,7 @@ struct MediaOrganizerSettingsView: View {
             updatesTab
                 .tabItem { Label("Updates", systemImage: "arrow.clockwise.circle") }
         }
-        .frame(width: 500, height: 450)
+        .frame(width: 550, height: 480)
         .padding()
     }
     
@@ -59,9 +59,11 @@ struct MediaOrganizerSettingsView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         TextEditor(text: $customInstructions)
-                            .frame(height: 60)
+                            .frame(height: 80)
                             .padding(4)
-                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.2)))
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(6)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(NSColor.separatorColor), lineWidth: 1))
                     }
                 }
                 .padding(.vertical, 8)
@@ -211,4 +213,3 @@ struct MediaOrganizerSettingsView: View {
         }.resume()
     }
 }
-
