@@ -13,12 +13,19 @@ STAGING_DIR="${OUTPUT_DIR}/Staging"
 
 # Check if app path is provided
 if [ -z "$1" ]; then
-    echo "Usage: ./Scripts/build_release.sh /path/to/Media\ Organizer.app"
-    echo "Please provide the path to your compiled application."
-    exit 1
+    echo "🔍 No app path provided. Searching Xcode DerivedData for the latest build..."
+    LATEST_APP=$(find ~/Library/Developer/Xcode/DerivedData -name "Media Organizer.app" -type d -path "*/Build/Products/Debug/*" 2>/dev/null | head -n 1)
+    
+    if [ -z "$LATEST_APP" ]; then
+        echo "❌ Error: Could not find Media Organizer.app in DerivedData."
+        echo "Usage: ./Scripts/build_release.sh /path/to/Media\ Organizer.app"
+        exit 1
+    fi
+    SOURCE_APP="$LATEST_APP"
+    echo "✅ Found latest build: $SOURCE_APP"
+else
+    SOURCE_APP="$1"
 fi
-
-SOURCE_APP="$1"
 
 if [ ! -d "${SOURCE_APP}" ]; then
     echo "Error: App not found at ${SOURCE_APP}"
