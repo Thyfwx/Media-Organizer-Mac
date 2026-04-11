@@ -49,17 +49,29 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
+            // MARK: - PREMIUM GLASS BACKGROUND
             ZStack {
+                VisualEffectView()
+                    .ignoresSafeArea()
+                
                 LinearGradient(
-                    colors: [Color.accentColor.opacity(0.5), Color.purple.opacity(0.5), Color.cyan.opacity(0.4)],
+                    colors: [
+                        Color(red: 0.98, green: 0.77, blue: 0.89).opacity(0.4), // Pastel Pink
+                        Color(red: 0.88, green: 0.76, blue: 0.99).opacity(0.4), // Pastel Purple
+                        Color(red: 0.63, green: 0.77, blue: 0.99).opacity(0.4), // Pastel Blue
+                        Color(red: 0.76, green: 0.98, blue: 0.73).opacity(0.3)  // Pastel Mint
+                    ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
-                .hueRotation(.degrees(gradientAnimation ? 360 : 0))
-                .animation(.linear(duration: 8.0).repeatForever(autoreverses: false), value: gradientAnimation)
+                .hueRotation(.degrees(gradientAnimation ? 45 : 0))
+                .animation(.easeInOut(duration: 10.0).repeatForever(autoreverses: true), value: gradientAnimation)
                 .onAppear { gradientAnimation = true }
                 
-                Rectangle().fill(.ultraThinMaterial)
+                if isDropTargeted {
+                    Color.accentColor.opacity(0.15)
+                        .transition(.opacity)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea(.all)
@@ -99,6 +111,10 @@ struct ContentView: View {
         }
         .dropDestination(for: URL.self) { items, location in
             guard !isReviewing && !isProcessing else { return false }
+            
+            // Play a cute "Pop" sound when files are dropped!
+            NSSound(named: "Pop")?.play()
+            
             lastError = nil
             var gatheredURLs: [URL] = []
             
@@ -660,6 +676,18 @@ struct ContentView: View {
             proposedChanges.removeAll()
         }
     }
+}
+
+// MARK: - NATIVE GLASS EFFECT
+struct VisualEffectView: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.material = .underWindowBackground
+        return view
+    }
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
 
 #Preview {

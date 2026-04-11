@@ -23,6 +23,12 @@ struct MediaOrganizerSettingsView: View {
     // Local Settings
     @AppStorage("localModel") private var localModel: String = "llama3.2"
     
+    @State private var isCheckingForUpdates = false
+    @State private var updateMessage: String? = nil
+    @State private var latestVersion: String? = nil
+    
+    private let currentVersion = "1.0.0" // Alpha 1.0
+    
     var body: some View {
         TabView {
             generalTab
@@ -30,175 +36,179 @@ struct MediaOrganizerSettingsView: View {
             engineTab
                 .tabItem { Label("AI Engine", systemImage: "cpu") }
             updatesTab
-                .tabItem { Label("Updates", systemImage: "arrow.triangle.2.circlepath") }
+                .tabItem { Label("Updates", systemImage: "arrow.clockwise.circle") }
         }
-        .frame(width: 550, height: 480)
+        .frame(width: 500, height: 450)
         .padding()
     }
     
     var generalTab: some View {
-        Form {
-            Section(header: Text("Naming Rules").font(.headline).padding(.bottom, 4)) {
-                Picker("Format Template:", selection: $namingTemplate) {
-                    Text("Descriptive Name (Default)").tag("Descriptive Name")
-                    Text("Date - Name (e.g., 2026-04-10 - Receipt)").tag("YYYY-MM-DD - Descriptive Name")
-                    Text("Name (Year) (e.g., Receipt (2026))").tag("Descriptive Name (YYYY)")
-                }
-                .pickerStyle(.menu)
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Custom AI Instructions (Optional):")
-                    TextEditor(text: $customInstructions)
-                        .frame(height: 80)
-                        .font(.body)
-                        .padding(4)
-                        .background(Color(NSColor.textBackgroundColor))
-                        .cornerRadius(6)
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(NSColor.separatorColor), lineWidth: 1))
-                    Text("e.g. 'Translate to Spanish' or 'Always prefix with Work -'")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 8)
-            }
-            
-            Divider().padding(.vertical, 12)
-            
-            Section(header: Text("Organization Preferences").font(.headline).padding(.bottom, 4)) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Auto-Sort into Subfolders", isOn: $createSubfolders)
-                    Text("The AI will create folders (like 'Receipts' or 'Audio') and move files inside.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.leading, 18)
-                }
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Apply Native macOS Finder Tags", isOn: $applyFinderTags)
-                    Text("The AI will color-code and tag files in Finder for easy searching.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.leading, 18)
-                }
-                .padding(.top, 4)
-            }
-        }
-        .padding(20)
-    }
-    
-    var engineTab: some View {
-        Form {
-            Section(header: Text("Processing Engine").font(.headline).padding(.bottom, 4)) {
-                Picker("", selection: $aiMode) {
-                    Text("✨ Apple Intelligence (On-Device)").tag(0)
-                    Text("Local Ollama").tag(1)
-                    Text("ChatGPT / Cloud API").tag(2)
-                }
-                .pickerStyle(.radioGroup)
-            }
-            
-            Divider().padding(.vertical, 12)
-            
-            if aiMode == 0 {
-                VStack(alignment: .center, spacing: 16) {
-                    Image(systemName: "apple.intelligence")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 48, height: 48)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.purple, .blue],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    
-                    Text("Apple Intelligence")
-                        .font(.title2).bold()
-                    
-                    Text("Uses native, on-device intelligence to analyze your files. It is 100% free, fully private, and requires no internet connection or API keys.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 20)
-                }
-                .padding(.top, 20)
-                .frame(maxWidth: .infinity)
-            } else if aiMode == 1 {
-                Section(header: Text("Local Ollama Configuration").font(.headline).padding(.bottom, 4)) {
-                    HStack {
-                        Text("Endpoint:")
-                        Spacer()
-                        Text("http://localhost:11434")
-                            .foregroundStyle(.secondary)
+        VStack(spacing: 20) {
+            GroupBox(label: Label("Naming & Organization", systemImage: "doc.text.magnifyingglass")) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker("Format Template:", selection: $namingTemplate) {
+                        Text("Name (Default)").tag("Descriptive Name")
+                        Text("Category - Name").tag("Category - Descriptive Name")
+                        Text("Date - Name").tag("YYYY-MM-DD - Descriptive Name")
+                        Text("Date - Category - Name").tag("YYYY-MM-DD - Category - Descriptive Name")
                     }
-                    HStack {
-                        Text("API Key:")
-                        Spacer()
-                        Text("Not Required")
+                    .pickerStyle(.menu)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Custom AI Instructions:")
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
+                        TextEditor(text: $customInstructions)
+                            .frame(height: 60)
+                            .padding(4)
+                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.2)))
                     }
-                    TextField("Model Name:", text: $localModel)
-                        .textFieldStyle(.roundedBorder)
                 }
-            } else {
-                Section(header: Text("Cloud API Configuration").font(.headline).padding(.bottom, 4)) {
-                    TextField("API Endpoint:", text: $cloudEndpoint)
-                        .textFieldStyle(.roundedBorder)
-                    SecureField("API Key (sk-...):", text: $cloudApiKey)
-                        .textFieldStyle(.roundedBorder)
-                    TextField("Model Name:", text: $cloudModel)
-                        .textFieldStyle(.roundedBorder)
+                .padding(.vertical, 8)
+            }
+            
+            GroupBox(label: Label("File Handling", systemImage: "folder.badge.plus")) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Toggle("Automatically create subfolders", isOn: $createSubfolders)
+                    Toggle("Apply macOS Finder tags", isOn: $applyFinderTags)
                 }
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-        }
-        .padding(20)
-    }
-    
-    var updatesTab: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "sparkles.rectangle.stack.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 64, height: 64)
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.purple, .cyan],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            
-            VStack(spacing: 8) {
-                Text("Media Organizer")
-                    .font(.title).bold()
-                Text("Version 1.0 (Alpha)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            
-            Text("Checking for updates will open the official GitHub repository releases page. If a new version is available, download the latest .dmg and drag it into your Applications folder to update.")
-                .font(.body)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 40)
-            
-            Button(action: checkForUpdates) {
-                Label("Check for Updates", systemImage: "arrow.down.circle")
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             
             Spacer()
         }
-        .padding(40)
+        .padding()
+    }
+    
+    var engineTab: some View {
+        VStack(spacing: 20) {
+            Picker("AI Strategy", selection: $aiMode) {
+                Text("Native").tag(0)
+                Text("Ollama").tag(1)
+                Text("Cloud").tag(2)
+            }
+            .pickerStyle(.segmented)
+            
+            if aiMode == 0 {
+                VStack(spacing: 12) {
+                    Image(systemName: "apple.intelligence")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.purple.gradient)
+                    Text("Apple Intelligence Mode")
+                        .font(.headline)
+                    Text("Uses the high-performance local engine we built. Fast, private, and free.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+                .frame(maxHeight: .infinity)
+            } else if aiMode == 1 {
+                Form {
+                    Section("Ollama Settings") {
+                        TextField("Model Name:", text: $localModel)
+                        Text("Endpoint: http://localhost:11434")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else {
+                Form {
+                    Section("Cloud Credentials") {
+                        TextField("Endpoint:", text: $cloudEndpoint)
+                        SecureField("API Key:", text: $cloudApiKey)
+                        TextField("Model Name:", text: $cloudModel)
+                    }
+                }
+            }
+            
+            Spacer()
+        }
+        .padding()
+    }
+    
+    var updatesTab: some View {
+        VStack(spacing: 25) {
+            Spacer()
+            
+            if let icon = NSApp.applicationIconImage {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 80, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(radius: 5)
+            }
+            
+            VStack(spacing: 5) {
+                Text("Media Organizer")
+                    .font(.title2).bold()
+                Text("Version \(currentVersion) (Alpha)")
+                    .foregroundStyle(.secondary)
+            }
+            
+            if let message = updateMessage {
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(latestVersion != nil ? .green : .secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
+            
+            Button(action: checkForUpdates) {
+                if isCheckingForUpdates {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Text("Check for Updates")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isCheckingForUpdates)
+            
+            if let version = latestVersion {
+                Button("Download v\(version)") {
+                    if let url = URL(string: "https://github.com/Thyfwx/Media-Organizer-Mac/releases") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .buttonStyle(.link)
+            }
+            
+            Spacer()
+        }
+        .padding()
     }
     
     private func checkForUpdates() {
-        if let url = URL(string: "https://github.com/Thyfwx/Media-Organizer-Mac/releases") {
-            NSWorkspace.shared.open(url)
+        isCheckingForUpdates = true
+        updateMessage = "Connecting to GitHub..."
+        
+        guard let url = URL(string: "https://api.github.com/repos/Thyfwx/Media-Organizer-Mac/releases/latest") else {
+            isCheckingForUpdates = false
+            return
         }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            DispatchQueue.main.async {
+                isCheckingForUpdates = false
+                
+                if let data = data,
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let tagName = json["tag_name"] as? String {
+                    
+                    let version = tagName.replacingOccurrences(of: "v", with: "").replacingOccurrences(of: "-alpha", with: "")
+                    
+                    if version > currentVersion {
+                        latestVersion = version
+                        updateMessage = "A new version (v\(version)) is available!"
+                    } else {
+                        updateMessage = "You are up to date!"
+                    }
+                } else {
+                    updateMessage = "Could not check for updates. Please try again later."
+                }
+            }
+        }.resume()
     }
 }
+
