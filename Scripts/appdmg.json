@@ -1,0 +1,16 @@
+{
+  "title": "Media Organizer Setup",
+  "icon": "VolumeIcon.icns",
+  "background": "dmg_background_final.png",
+  "contents": [
+    { "x": 450, "y": 200, "type": "link", "path": "/Applications" },
+    { "x": 150, "y": 200, "type": "file", "path": "/Users/xavierscott/Library/Developer/Xcode/DerivedData/Media_Organizer-aqmywkqfxyjyfyduqxpbrcpuueqt/Build/Products/Debug/Media Organizer.app" }
+  ],
+  "window": {
+    "size": {
+      "width": 600,
+      "height": 400
+    }
+  },
+  "format": "UDZO"
+}
