@@ -51,7 +51,7 @@ actor EmbeddedAIEngine {
         modelParams.n_gpu_layers = 99 // Forces Apple Silicon GPU acceleration
         print("Llama.cpp Engine Initialized!")
         #else
-        print("Waiting for llama.cpp package to be added. Running in Heuristic Mode.")
+        print("Waiting for llama.cpp package to be added. Running in Expert Heuristic Mode.")
         #endif
         
         isModelLoaded = true
@@ -68,65 +68,97 @@ actor EmbeddedAIEngine {
         return "{ \"proposedName\": \"Native AI File\", \"category\": \"Documents\" }"
         #else
         
-        // HEURISTIC MODE: This is a sophisticated "fallback" AI that analyzes the prompt
-        // to provide real, useful data even before the full LLM is linked.
-        
-        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second "thinking"
+        // EXPERT HEURISTIC MODE: Deep analysis of content and metadata
+        try await Task.sleep(nanoseconds: 800_000_000) 
         
         let lines = userPrompt.components(separatedBy: "\n")
-        var filename = "Organized File"
+        var rawFilename = ""
         var content = ""
         
         for line in lines {
             if line.contains("Raw Filename: ") {
-                filename = line.replacingOccurrences(of: "- Raw Filename: ", with: "")
+                rawFilename = line.replacingOccurrences(of: "- Raw Filename: ", with: "")
             }
             if line.contains("Content Snippet: ") {
                 content = line.replacingOccurrences(of: "- Content Snippet: ", with: "")
             }
         }
         
-        var category = "Unsorted"
+        var proposedName = rawFilename
+        var category = "Organized"
         var artist: String? = nil
         var title: String? = nil
         var album: String? = nil
         
-        // 1. Analyze by Content Keywords
         let lowerContent = content.lowercased()
-        let lowerFilename = filename.lowercased()
+        let lowerFilename = rawFilename.lowercased()
         
-        if lowerContent.contains("receipt") || lowerContent.contains("amount") || lowerContent.contains("total") || lowerFilename.contains("receipt") {
-            category = "Finance"
-            filename = "Receipt - " + filename
-        } else if lowerContent.contains("invoice") || lowerContent.contains("bill to") {
-            category = "Legal"
-            filename = "Invoice - " + filename
-        } else if lowerContent.contains("artist:") || lowerContent.contains("title:") {
+        // A. Media Intelligence (Audio/Video)
+        if lowerContent.contains("media metadata:") {
             category = "Media"
-            // Extract metadata if possible
-            if let artistRange = lowerContent.range(of: "artist: ") {
-                let start = artistRange.upperBound
-                let end = lowerContent[start...].firstIndex(of: ".") ?? lowerContent.endIndex
-                artist = String(content[start..<end]).trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // Extract Artist/Title from metadata
+            if let artistRange = lowerContent.range(of: "- artist: ") {
+                let val = content[artistRange.upperBound...].components(separatedBy: "\n").first ?? ""
+                artist = val.trimmingCharacters(in: .whitespacesAndNewlines)
             }
-            if let titleRange = lowerContent.range(of: "title: ") {
-                let start = titleRange.upperBound
-                let end = lowerContent[start...].firstIndex(of: ".") ?? lowerContent.endIndex
-                title = String(content[start..<end]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if let titleRange = lowerContent.range(of: "- title: ") {
+                let val = content[titleRange.upperBound...].components(separatedBy: "\n").first ?? ""
+                title = val.trimmingCharacters(in: .whitespacesAndNewlines)
             }
-        } else if lowerContent.contains("text in image") {
-            category = "Images"
-            // Use OCR text for name
-            let ocrText = content.replacingOccurrences(of: "Text in image: ", with: "").prefix(30)
-            if !ocrText.isEmpty {
-                filename = String(ocrText)
+            if let albumRange = lowerContent.range(of: "- albumname: ") {
+                let val = content[albumRange.upperBound...].components(separatedBy: "\n").first ?? ""
+                album = val.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            
+            if let a = artist, let t = title {
+                proposedName = "\(a) - \(t)"
+            } else if let t = title {
+                proposedName = t
             }
         }
         
-        // 2. Format the response
+        // B. Document Intelligence (PDF/Text)
+        else if lowerContent.contains("receipt") || lowerContent.contains("total:") || lowerContent.contains("amount due") {
+            category = "Finance"
+            // Look for a date in the text
+            let pattern = "\\d{4}-\\d{2}-\\d{2}"
+            if let range = content.range(of: pattern, options: .regularExpression) {
+                proposedName = "Receipt - " + String(content[range])
+            } else {
+                proposedName = "Receipt - " + rawFilename
+            }
+        } else if lowerContent.contains("invoice") || lowerContent.contains("bill to:") {
+            category = "Legal"
+            proposedName = "Invoice - " + rawFilename
+        } else if lowerContent.contains("agreement") || lowerContent.contains("contract") || lowerContent.contains("confidential") {
+            category = "Legal"
+            proposedName = "Contract - " + rawFilename
+        }
+        
+        // C. Visual Intelligence (Images)
+        else if lowerContent.contains("image content:") {
+            category = "Images"
+            if let textRange = lowerContent.range(of: "- text in image: ") {
+                let ocrText = content[textRange.upperBound...].components(separatedBy: "\n").first ?? ""
+                if ocrText.count > 5 {
+                    proposedName = String(ocrText.prefix(40))
+                }
+            } else if let classRange = lowerContent.range(of: "- visual classification: ") {
+                let label = content[classRange.upperBound...].components(separatedBy: ",").first ?? "Photo"
+                proposedName = label.capitalized + " - " + rawFilename
+            }
+        }
+        
+        // D. General Clean-up
+        proposedName = proposedName
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .capitalized
+        
         return """
         {
-          "proposedName": "\(filename.trimmingCharacters(in: .whitespacesAndNewlines))",
+          "proposedName": "\(proposedName.trimmingCharacters(in: .whitespacesAndNewlines))",
           "category": "\(category)",
           "artist": \(artist != nil ? "\"\(artist!)\"" : "null"),
           "title": \(title != nil ? "\"\(title!)\"" : "null"),

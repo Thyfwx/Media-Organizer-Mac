@@ -272,8 +272,12 @@ struct ContentView: View {
                         Spacer()
                         
                         Button(action: {
-                            if let idx = proposedChanges.firstIndex(where: { $0.id == change.id }) {
-                                proposedChanges.remove(at: idx)
+                            // Delay removal to allow TextField to finish editing and avoid crash
+                            let idToRemove = change.id
+                            DispatchQueue.main.async {
+                                withAnimation {
+                                    proposedChanges.removeAll(where: { $0.id == idToRemove })
+                                }
                             }
                         }) {
                             Image(systemName: "xmark.circle.fill")
