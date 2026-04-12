@@ -1,4 +1,4 @@
-# 📁 Media Organizer (macOS) - Alpha 1.0.1
+# 📁 Media Organizer (macOS) - Alpha 1.1.1
 
 Media Organizer is a premium, AI-powered "Naming Rehab" tool for macOS. It transforms messy, "jibber-jabber" filenames and unorganized folders into professional, human-readable assets using cutting-edge Artificial Intelligence.
 
@@ -56,7 +56,7 @@ A premium, native macOS experience featuring:
 
 ## 🛠️ Installation & Updates
 
-1. **Download:** Grab the latest `Media-Organizer-Alpha-1.0.dmg` from the [Releases](https://github.com/Thyfwx/Media-Organizer-Mac/releases/tag/v1.0.1-alpha) page.
+1. **Download:** Grab the latest `Media-Organizer-Alpha-1.0.dmg` from the [Releases](https://github.com/Thyfwx/Media-Organizer-Mac/releases/tag/v1.1.1-alpha) page.
 2. **Install:** Drag the app into your **Applications** folder.
 3. **Stay Current:** Use the built-in **"Check for Updates"** button in Settings. It connects directly to the GitHub API to let you know if a new version is ready.
 
