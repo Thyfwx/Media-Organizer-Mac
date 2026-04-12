@@ -14,8 +14,8 @@ actor LLMService {
     }
     
     func ensureModelExists() async throws {
-        // Only the on-device Apple Intelligence mode needs to download the embedded model
-        if config.engineType == .appleIntelligence {
+        // Only the Pro Local AI mode needs to download the heavy LLM model
+        if config.engineType == .proLocalAI {
             try await EmbeddedAIEngine.shared.loadModel()
         }
     }
@@ -56,13 +56,13 @@ actor LLMService {
             userPrompt += "\n- Content Snippet: \(contentPreview)"
         }
         
-        // ROUTE 1: Use the Embedded Native Engine! (Apple Intelligence Mode)
-        if config.engineType == .appleIntelligence {
+        // ROUTE 1 & 2: Use the Embedded Engines
+        if config.engineType == .coreAI || config.engineType == .proLocalAI {
             let rawJSON = try await EmbeddedAIEngine.shared.generateResponse(systemPrompt: systemPrompt, userPrompt: userPrompt)
             return try decodeMetadata(fromJSON: rawJSON)
         }
         
-        // ROUTE 2: Use Network API (Ollama or Cloud)
+        // ROUTE 3: Use Network API (Ollama or Cloud)
         let payload: [String: Any] = [
             "model": config.model,
             "response_format": ["type": "json_object"],
@@ -93,8 +93,6 @@ actor LLMService {
     }
     
     // MARK: - NON-ISOLATED HELPERS
-    // These helpers are nonisolated to satisfy the Swift 6 compiler's actor isolation rules.
-    
     private nonisolated func decodeMetadata(fromJSON json: String) throws -> FileMetadata {
         guard let data = json.data(using: .utf8) else { throw URLError(.cannotParseResponse) }
         return try JSONDecoder().decode(FileMetadata.self, from: data)

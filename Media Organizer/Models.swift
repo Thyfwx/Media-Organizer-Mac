@@ -26,9 +26,10 @@ public struct LLMConfig: Sendable {
 }
 
 public enum LLMEngineType: Int, Codable, Sendable {
-    case appleIntelligence = 0
-    case localOllama = 1
-    case cloudAPI = 2
+    case coreAI = 0      // Fast Heuristic (Unlimited)
+    case proLocalAI = 1  // Local LLM (Limited/Heavy)
+    case localOllama = 2
+    case cloudAPI = 3
 }
 
 // MARK: - UI MODELS (Main Actor Isolated)

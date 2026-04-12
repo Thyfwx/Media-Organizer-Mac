@@ -12,7 +12,7 @@ struct MediaOrganizerSettingsView: View {
     @AppStorage("customInstructions") private var customInstructions: String = ""
     
     // Organization Preferences
-    @AppStorage("createSubfolders") private var createSubfolders: Bool = true
+    @AppStorage("createSubfolders") private var createSubfolders: Bool = false
     @AppStorage("applyFinderTags") private var applyFinderTags: Bool = true
     
     // Casual Settings
@@ -49,14 +49,14 @@ struct MediaOrganizerSettingsView: View {
             updatesTab
                 .tabItem { Label("Updates", systemImage: "arrow.clockwise.circle") }
         }
-        .frame(width: 500, height: 520)
+        .frame(width: 500, height: 550)
         .padding()
     }
     
     var generalTab: some View {
         ScrollView {
             VStack(spacing: 20) {
-                GroupBox(label: Label("Personalize", systemImage: "paintbrush")) {
+                GroupBox(label: Label("Naming & Rehab", systemImage: "paintbrush")) {
                     VStack(alignment: .leading, spacing: 12) {
                         Picker("File Naming:", selection: $namingTemplate) {
                             Text("Name Only").tag("Descriptive Name")
@@ -84,12 +84,12 @@ struct MediaOrganizerSettingsView: View {
                 GroupBox(label: Label("Organization Style", systemImage: "arrow.left.arrow.right")) {
                     VStack(alignment: .leading, spacing: 12) {
                         Picker("Final Destination:", selection: $createSubfolders) {
-                            Text("In-Place (Rename only in current folder)").tag(false)
-                            Text("Subfolders (Create and sort by category)").tag(true)
+                            Text("In-Place (Rename only)").tag(false)
+                            Text("Subfolders (Sort by category)").tag(true)
                         }
                         .pickerStyle(.radioGroup)
 
-                        Text(createSubfolders ? "Files will be moved into folders like 'Finance' or 'Media' inside their current location." : "Files will stay exactly where they are, just with new descriptive names.")
+                        Text(createSubfolders ? "Files will be moved into category folders inside their current location." : "Files will stay exactly where they are, just with new descriptive names.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.leading, 20)
@@ -122,27 +122,33 @@ struct MediaOrganizerSettingsView: View {
     var engineTab: some View {
         VStack(spacing: 20) {
             Picker("Strategy", selection: $aiMode) {
-                Text("Native").tag(0)
-                Text("Ollama").tag(1)
-                Text("Cloud").tag(2)
+                Text("Core").tag(0)
+                Text("Pro Local").tag(1)
+                Text("Ollama").tag(2)
+                Text("Cloud").tag(3)
             }
             .pickerStyle(.segmented)
             
             if aiMode == 0 {
-                VStack(spacing: 12) {
-                    Image(systemName: "apple.intelligence")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.purple.gradient)
-                    Text("Apple Intelligence Mode")
-                        .font(.headline)
-                    Text("Privacy first. Uses our custom on-device engine. Fast, free, and works offline.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-                .frame(maxHeight: .infinity)
+                engineInfoView(
+                    icon: "apple.intelligence",
+                    title: "Core AI (Apple Intelligence)",
+                    description: "Fast, free, and works offline. Uses built-in heuristic logic to analyze file context and metadata."
+                )
             } else if aiMode == 1 {
+                VStack(spacing: 12) {
+                    engineInfoView(
+                        icon: "brain.head.profile",
+                        title: "Pro Local AI (LLM)",
+                        description: "Deepest logic. Downloads and runs a private LLM on your Mac. Free but high resource use."
+                    )
+                    
+                    Text("⚠️ Note: This mode has a daily usage limit to prevent system overheating.")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .padding(.top, 10)
+                }
+            } else if aiMode == 2 {
                 Form {
                     Section("Ollama Settings") {
                         TextField("Model Name:", text: $localModel)
@@ -150,55 +156,75 @@ struct MediaOrganizerSettingsView: View {
                     }
                 }
             } else {
-                VStack(alignment: .leading, spacing: 15) {
-                    Picker("Provider:", selection: $cloudProvider) {
-                        Text("OpenAI (GPT-4o)").tag("OpenAI")
-                        Text("Anthropic (Claude)").tag("Anthropic")
-                        Text("Groq (Llama 3)").tag("Groq")
-                        Text("Custom / Self-Hosted").tag("Custom")
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: cloudProvider) { newValue in
-                        updateCloudPresets(for: newValue)
-                    }
-                    
-                    Divider()
-                    
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("API Credentials")
-                            .font(.headline)
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Endpoint URL")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            TextField("https://...", text: $cloudEndpoint)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("API Key")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            SecureField("Enter your key here", text: $cloudApiKey)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Model Identifier")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            TextField("e.g. gpt-4o", text: $cloudModel)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                    }
-                    .padding(.horizontal, 5)
-                }
+                cloudSettingsView
             }
             
             Spacer()
         }
         .padding()
+    }
+    
+    private func engineInfoView(icon: String, title: String, description: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 40))
+                .foregroundStyle(.purple.gradient)
+            Text(title)
+                .font(.headline)
+            Text(description)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+        .frame(maxHeight: .infinity)
+    }
+    
+    private var cloudSettingsView: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Picker("Provider:", selection: $cloudProvider) {
+                Text("OpenAI (GPT-4o)").tag("OpenAI")
+                Text("Anthropic (Claude)").tag("Anthropic")
+                Text("Groq (Llama 3)").tag("Groq")
+                Text("Custom / Self-Hosted").tag("Custom")
+            }
+            .pickerStyle(.menu)
+            .onChange(of: cloudProvider) { newValue in
+                updateCloudPresets(for: newValue)
+            }
+            
+            Divider()
+            
+            VStack(alignment: .leading, spacing: 12) {
+                Text("API Credentials")
+                    .font(.headline)
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Endpoint URL")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("https://...", text: $cloudEndpoint)
+                        .textFieldStyle(.roundedBorder)
+                }
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("API Key")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    SecureField("Enter your key here", text: $cloudApiKey)
+                        .textFieldStyle(.roundedBorder)
+                }
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Model Identifier")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("e.g. gpt-4o", text: $cloudModel)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+            .padding(.horizontal, 5)
+        }
     }
     
     private func updateCloudPresets(for provider: String) {
