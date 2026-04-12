@@ -11,7 +11,7 @@ import AppKit
 import PDFKit
 import Vision
 import AVFoundation 
-import UserNotifications
+@preconcurrency import UserNotifications
 import QuickLookThumbnailing
 
 struct ContentView: View {
@@ -45,7 +45,7 @@ struct ContentView: View {
     @AppStorage("createSubfolders") private var createSubfolders: Bool = true
     @AppStorage("applyFinderTags") private var applyFinderTags: Bool = true
     
-    // NEW: Casual Settings
+    // Casual Settings
     @AppStorage("enableSounds") private var enableSounds: Bool = true
     @AppStorage("enableNotifications") private var enableNotifications: Bool = true
     @AppStorage("defaultCategory") private var defaultCategory: String = "Organized"
@@ -315,7 +315,7 @@ struct ContentView: View {
     var historyPopover: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Recent History")
+                Text("Descriptive History")
                     .font(.headline)
                 Spacer()
                 Button("Clear All") { processedHistory.removeAll() }
@@ -327,43 +327,86 @@ struct ContentView: View {
             Divider()
             
             ScrollView {
-                VStack(spacing: 8) {
+                VStack(spacing: 12) {
                     ForEach(processedHistory.reversed()) { record in
-                        HStack {
-                            VStack(alignment: .leading) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Image(systemName: categoryIcon(for: record.category))
+                                    .foregroundStyle(Color.accentColor)
                                 Text(record.finalURL.lastPathComponent)
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.system(size: 13, weight: .bold))
                                     .lineLimit(1)
-                                Text("from: \(record.originalName)")
+                                Spacer()
+                                Text(record.dateProcessed, style: .date)
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Original: \(record.originalName)")
                                     .font(.system(size: 10))
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
-                            }
-                            Spacer()
-                            Button(action: { undoMove(for: record) }) {
-                                Image(systemName: "arrow.uturn.backward")
+                                
+                                Text("Category: \(record.category)")
                                     .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
                             }
-                            .buttonStyle(.plain)
-                            .help("Undo this move")
                             
-                            Button(action: { NSWorkspace.shared.activateFileViewerSelecting([record.finalURL]) }) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.system(size: 10))
+                            HStack {
+                                Spacer()
+                                Button(action: { undoMove(for: record) }) {
+                                    Label("Undo", systemImage: "arrow.uturn.backward")
+                                        .font(.system(size: 10))
+                                }
+                                .buttonStyle(.plain)
+                                
+                                Button(action: { NSWorkspace.shared.activateFileViewerSelecting([record.finalURL]) }) {
+                                    Label("Find", systemImage: "magnifyingglass")
+                                        .font(.system(size: 10))
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
-                            .help("Show in Finder")
                         }
-                        .padding(8)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.05)))
+                        .padding(10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(categoryColor(for: record.category).opacity(0.08))
+                        )
                     }
                 }
                 .padding(.horizontal)
             }
-            .frame(width: 300, height: 400)
+            .frame(width: 350, height: 450)
         }
     }
     
+    private func categoryColor(for category: String) -> Color {
+        switch category.lowercased() {
+        case "finance": return .green
+        case "legal": return .blue
+        case "media": return .purple
+        case "images": return .pink
+        case "career": return .orange
+        case "taxes": return .red
+        case "screenshots": return .cyan
+        default: return .secondary
+        }
+    }
+    
+    private func categoryIcon(for category: String) -> String {
+        switch category.lowercased() {
+        case "finance": return "dollarsign.circle.fill"
+        case "legal": return "doc.text.fill"
+        case "media": return "play.circle.fill"
+        case "images": return "photo.fill"
+        case "career": return "briefcase.fill"
+        case "taxes": return "building.columns.fill"
+        case "screenshots": return "macwindow"
+        default: return "folder.fill"
+        }
+    }
+
     // MARK: - FILE LOGIC
     
     private func generateThumbnail(for url: URL) async -> NSImage? {
@@ -429,21 +472,33 @@ struct ContentView: View {
         if ext == "pdf" {
             guard let pdf = PDFDocument(url: file) else { return "Encrypted or Invalid PDF" }
             var fullText = ""
-            // Get text from first 3 pages
-            for i in 0..<min(pdf.pageCount, 3) {
+            // Get text from first 5 pages for deeper context
+            for i in 0..<min(pdf.pageCount, 5) {
                 if let pageText = pdf.page(at: i)?.string {
                     fullText += pageText + " "
                 }
             }
-            return String(fullText.prefix(2000))
+            return String(fullText.prefix(3000))
             
         } else if ["txt", "md", "csv", "json"].contains(ext) {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { return nil }
-            return String(text.prefix(2000))
+            return String(text.prefix(3000))
             
         } else if ["png", "jpg", "jpeg", "heic", "tiff"].contains(ext) {
-            guard let imageSource = CGImageSourceCreateWithURL(file as CFURL, nil),
-                  let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else { return nil }
+            guard let imageSource = CGImageSourceCreateWithURL(file as CFURL, nil) else { return nil }
+            
+            // Extract EXIF/IPTC Metadata Clues
+            var metaClues = ""
+            if let dict = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [String: Any] {
+                if let tiff = dict["{TIFF}"] as? [String: Any], let model = tiff["Model"] as? String {
+                    metaClues += "Camera: \(model). "
+                }
+                if let exif = dict["{Exif}"] as? [String: Any], let date = exif["DateTimeOriginal"] as? String {
+                    metaClues += "Captured: \(date). "
+                }
+            }
+            
+            guard let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else { return nil }
             
             let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             let textRequest = VNRecognizeTextRequest()
@@ -453,14 +508,16 @@ struct ContentView: View {
             
             try? requestHandler.perform([textRequest, classifyRequest])
             
-            var imageDescription = "IMAGE CONTENT:\n"
+            var imageDescription = "IMAGE FORENSICS:\n"
+            imageDescription += "- Meta Clues: \(metaClues)\n"
+            
             if let text = textRequest.results?.compactMap({ $0.topCandidates(1).first?.string }).joined(separator: " "), !text.isEmpty {
                 imageDescription += "- Text in image: \(text)\n"
             }
-            if let classifications = classifyRequest.results?.filter({ $0.hasMinimumRecall(0.6, forPrecision: 0.6) }).prefix(5).map({ $0.identifier }).joined(separator: ", ") {
-                imageDescription += "- Visual Classification: \(classifications)"
+            if let classifications = classifyRequest.results?.filter({ $0.hasMinimumRecall(0.5, forPrecision: 0.5) }).prefix(8).map({ $0.identifier }).joined(separator: ", ") {
+                imageDescription += "- Visual Clues: \(classifications)"
             }
-            return String(imageDescription.prefix(2000))
+            return String(imageDescription.prefix(3000))
             
         } else if ["mp4", "mov", "m4a", "mp3", "wav"].contains(ext) {
             let asset = AVURLAsset(url: file)
@@ -594,7 +651,13 @@ struct ContentView: View {
             do {
                 let finalURL = try await fileProcessor.process(file: change.originalURL, with: change.toMetadata, createFolders: createSubfolders, applyTags: applyFinderTags)
                 
-                let record = ProcessedFileRecord(originalURL: change.originalURL, originalName: change.originalURL.lastPathComponent, finalURL: finalURL)
+                let record = ProcessedFileRecord(
+                    originalURL: change.originalURL,
+                    originalName: change.originalURL.lastPathComponent,
+                    finalURL: finalURL,
+                    category: change.category,
+                    summary: change.proposedName
+                )
                 processedHistory.append(record)
                 
                 processedFilesCount += 1
@@ -607,7 +670,13 @@ struct ContentView: View {
                         do {
                             let finalURL = try await fileProcessor.process(file: change.originalURL, with: change.toMetadata, createFolders: createSubfolders, applyTags: applyFinderTags)
                             
-                            let record = ProcessedFileRecord(originalURL: change.originalURL, originalName: change.originalURL.lastPathComponent, finalURL: finalURL)
+                            let record = ProcessedFileRecord(
+                                originalURL: change.originalURL,
+                                originalName: change.originalURL.lastPathComponent,
+                                finalURL: finalURL,
+                                category: change.category,
+                                summary: change.proposedName
+                            )
                             processedHistory.append(record)
                             
                             processedFilesCount += 1

@@ -51,7 +51,7 @@ actor EmbeddedAIEngine {
         modelParams.n_gpu_layers = 99 // Forces Apple Silicon GPU acceleration
         print("Llama.cpp Engine Initialized!")
         #else
-        print("Waiting for llama.cpp package to be added. Running in Expert Heuristic Mode.")
+        print("Waiting for llama.cpp package to be added. Running in Elite Heuristic Mode.")
         #endif
         
         isModelLoaded = true
@@ -68,8 +68,8 @@ actor EmbeddedAIEngine {
         return "{ \"proposedName\": \"Native AI File\", \"category\": \"Documents\" }"
         #else
         
-        // EXPERT HEURISTIC MODE: Deep analysis of content and metadata
-        try await Task.sleep(nanoseconds: 800_000_000) 
+        // ELITE HEURISTIC MODE: Deep context analysis
+        try await Task.sleep(nanoseconds: 600_000_000) 
         
         let lines = userPrompt.components(separatedBy: "\n")
         var rawFilename = ""
@@ -94,7 +94,7 @@ actor EmbeddedAIEngine {
         let lowerFilename = rawFilename.lowercased()
         
         // A. Media Intelligence (Audio/Video)
-        if lowerContent.contains("media metadata:") {
+        if lowerContent.contains("media metadata:") || ["mp3", "m4a", "wav", "mp4", "mov"].contains(lowerFilename.components(separatedBy: ".").last ?? "") {
             category = "Media"
             
             // Extract Artist/Title from metadata
@@ -115,29 +115,33 @@ actor EmbeddedAIEngine {
                 proposedName = "\(a) - \(t)"
             } else if let t = title {
                 proposedName = t
+            } else if lowerFilename.contains("audio") || lowerFilename.contains("recording") {
+                category = "Voice Memos"
             }
         }
         
         // B. Document Intelligence (PDF/Text)
-        else if lowerContent.contains("receipt") || lowerContent.contains("total:") || lowerContent.contains("amount due") {
+        else if lowerContent.contains("receipt") || lowerContent.contains("total:") || lowerContent.contains("amount due") || lowerFilename.contains("receipt") {
             category = "Finance"
-            // Look for a date in the text
             let pattern = "\\d{4}-\\d{2}-\\d{2}"
             if let range = content.range(of: pattern, options: .regularExpression) {
                 proposedName = "Receipt - " + String(content[range])
             } else {
                 proposedName = "Receipt - " + rawFilename
             }
-        } else if lowerContent.contains("invoice") || lowerContent.contains("bill to:") {
+        } else if lowerContent.contains("invoice") || lowerContent.contains("bill to:") || lowerFilename.contains("invoice") {
             category = "Legal"
             proposedName = "Invoice - " + rawFilename
-        } else if lowerContent.contains("agreement") || lowerContent.contains("contract") || lowerContent.contains("confidential") {
-            category = "Legal"
-            proposedName = "Contract - " + rawFilename
+        } else if lowerContent.contains("resume") || lowerContent.contains("cv") || lowerContent.contains("experience") || lowerFilename.contains("resume") {
+            category = "Career"
+            proposedName = "Resume - " + rawFilename
+        } else if lowerContent.contains("tax") || lowerContent.contains("irs") || lowerContent.contains("w2") || lowerFilename.contains("tax") {
+            category = "Taxes"
+            proposedName = "Tax Document - " + rawFilename
         }
         
         // C. Visual Intelligence (Images)
-        else if lowerContent.contains("image content:") {
+        else if lowerContent.contains("image content:") || ["png", "jpg", "jpeg", "heic"].contains(lowerFilename.components(separatedBy: ".").last ?? "") {
             category = "Images"
             if let textRange = lowerContent.range(of: "- text in image: ") {
                 let ocrText = content[textRange.upperBound...].components(separatedBy: "\n").first ?? ""
@@ -145,16 +149,33 @@ actor EmbeddedAIEngine {
                     proposedName = String(ocrText.prefix(40))
                 }
             } else if let classRange = lowerContent.range(of: "- visual classification: ") {
-                let label = content[classRange.upperBound...].components(separatedBy: ",").first ?? "Photo"
-                proposedName = label.capitalized + " - " + rawFilename
+                let labels = content[classRange.upperBound...].components(separatedBy: "\n").first ?? "Photo"
+                let topLabels = labels.components(separatedBy: ",").prefix(2).map({ $0.trimmingCharacters(in: .whitespaces).capitalized })
+                if topLabels.count > 1 {
+                    proposedName = "\(topLabels[0]) \(topLabels[1])"
+                } else {
+                    proposedName = topLabels.first ?? "Photo"
+                }
+            }
+            
+            if lowerFilename.contains("screenshot") {
+                category = "Screenshots"
             }
         }
         
-        // D. General Clean-up
+        // D. Final Premium Polish
         proposedName = proposedName
             .replacingOccurrences(of: "_", with: " ")
             .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: ".png", with: "", options: .caseInsensitive)
+            .replacingOccurrences(of: ".jpg", with: "", options: .caseInsensitive)
+            .replacingOccurrences(of: ".pdf", with: "", options: .caseInsensitive)
             .capitalized
+        
+        // Final sanity check: don't include the raw path if it's too long
+        if proposedName.count > 60 {
+            proposedName = String(proposedName.prefix(57)) + "..."
+        }
         
         return """
         {

@@ -33,15 +33,21 @@ actor FileProcessor {
             finalDirectory = baseDirectory
         }
         
-        let finalURL = finalDirectory.appendingPathComponent("\(safeName).\(ext)")
+        var finalURL = finalDirectory.appendingPathComponent("\(safeName).\(ext)")
+        
+        // Handle collisions properly: Add (1), (2), etc. if file already exists
+        if FileManager.default.fileExists(atPath: finalURL.path) && url != finalURL {
+            var counter = 1
+            while FileManager.default.fileExists(atPath: finalDirectory.appendingPathComponent("\(safeName) (\(counter)).\(ext)").path) {
+                counter += 1
+            }
+            finalURL = finalDirectory.appendingPathComponent("\(safeName) (\(counter)).\(ext)")
+        }
 
         if isMedia {
             try await applyMetadataAndMove(sourceURL: url, destinationURL: finalURL, metadata: metadata)
         } else {
             if url != finalURL {
-                if FileManager.default.fileExists(atPath: finalURL.path) {
-                    try FileManager.default.removeItem(at: finalURL)
-                }
                 try FileManager.default.moveItem(at: url, to: finalURL)
             }
         }

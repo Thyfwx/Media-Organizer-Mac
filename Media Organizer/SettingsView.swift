@@ -33,7 +33,7 @@ struct MediaOrganizerSettingsView: View {
     @State private var updateMessage: String? = nil
     @State private var latestVersion: String? = nil
     
-    private let currentVersion = "1.0.0" // Alpha 1.0
+    private let currentVersion = "1.0.1" // Alpha 1.0.1
     
     var body: some View {
         TabView {
@@ -76,10 +76,27 @@ struct MediaOrganizerSettingsView: View {
                     .padding(.vertical, 8)
                 }
                 
+                GroupBox(label: Label("Organization Style", systemImage: "arrow.left.arrow.right")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Picker("Final Destination:", selection: $createSubfolders) {
+                            Text("In-Place (Rename only in current folder)").tag(false)
+                            Text("Subfolders (Create and sort by category)").tag(true)
+                        }
+                        .pickerStyle(.radioGroup)
+
+                        Text(createSubfolders ? "Files will be moved into folders like 'Finance' or 'Media' inside their current location." : "Files will stay exactly where they are, just with new descriptive names.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 20)
+                    }
+                    .padding(.vertical, 8)
+                }
+
                 GroupBox(label: Label("Preferences", systemImage: "hand.tap")) {
                     VStack(alignment: .leading, spacing: 10) {
                         Toggle("Play sounds when finished", isOn: $enableSounds)
                         Toggle("Send desktop notifications", isOn: $enableNotifications)
+                        Toggle("Tag files for Spotlight search", isOn: $applyFinderTags)
                         
                         HStack {
                             Text("Default Folder:")
@@ -88,15 +105,6 @@ struct MediaOrganizerSettingsView: View {
                                 .frame(width: 150)
                         }
                         .padding(.top, 4)
-                    }
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                
-                GroupBox(label: Label("Automation", systemImage: "bolt.fill")) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Toggle("Automatically sort into folders", isOn: $createSubfolders)
-                        Toggle("Tag files for Spotlight search", isOn: $applyFinderTags)
                     }
                     .padding(.vertical, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -138,7 +146,7 @@ struct MediaOrganizerSettingsView: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 15) {
-                    Picker("Service Provider:", selection: $cloudProvider) {
+                    Picker("Provider:", selection: $cloudProvider) {
                         Text("OpenAI (GPT-4o)").tag("OpenAI")
                         Text("Anthropic (Claude)").tag("Anthropic")
                         Text("Groq (Llama 3)").tag("Groq")
@@ -204,6 +212,10 @@ struct MediaOrganizerSettingsView: View {
         }
     }
     
+    @State private var isDownloading = false
+    @State private var downloadProgress: Double = 0
+    @State private var downloadURL: URL? = nil
+    
     var updatesTab: some View {
         VStack(spacing: 25) {
             Spacer()
@@ -219,40 +231,97 @@ struct MediaOrganizerSettingsView: View {
             VStack(spacing: 5) {
                 Text("Media Organizer")
                     .font(.title2).bold()
-                Text("Version \(currentVersion) (Alpha)")
-                    .foregroundStyle(.secondary)
+                Text("Version \(currentVersion)")
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(Color.accentColor.opacity(0.1))
+                    .cornerRadius(4)
             }
             
             if let message = updateMessage {
-                Text(message)
-                    .font(.subheadline)
-                    .foregroundStyle(latestVersion != nil ? .green : .secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-            
-            Button(action: checkForUpdates) {
-                if isCheckingForUpdates {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Text("Check for Updates")
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(isCheckingForUpdates)
-            
-            if let version = latestVersion {
-                Button("Download v\(version)") {
-                    if let url = URL(string: "https://github.com/Thyfwx/Media-Organizer-Mac/releases") {
-                        NSWorkspace.shared.open(url)
+                VStack(spacing: 10) {
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(latestVersion != nil ? .green : .secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    if isDownloading {
+                        VStack(spacing: 4) {
+                            ProgressView(value: downloadProgress)
+                                .progressViewStyle(.linear)
+                                .frame(width: 200)
+                            Text("\(Int(downloadProgress * 100))%")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
-                .buttonStyle(.link)
+                .padding(.horizontal)
+            }
+            
+            if let version = latestVersion {
+                Button(action: { downloadAndInstall(version: version) }) {
+                    if isDownloading {
+                        Text("Downloading...")
+                    } else {
+                        Label("Download & Update", systemImage: "arrow.down.circle.fill")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isDownloading)
+            } else {
+                Button(action: checkForUpdates) {
+                    if isCheckingForUpdates {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Text("Check for Updates")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(isCheckingForUpdates)
             }
             
             Spacer()
         }
         .padding()
+    }
+    
+    private func downloadAndInstall(version: String) {
+        isDownloading = true
+        downloadProgress = 0
+        
+        let url = URL(string: "https://github.com/Thyfwx/Media-Organizer-Mac/releases/download/v\(version)-alpha/Media-Organizer-Alpha-1.0.dmg")!
+        
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent("Media-Organizer-Update.dmg")
+        try? FileManager.default.removeItem(at: destination)
+        
+        let session = URLSession(configuration: .default, delegate: nil, delegateQueue: .main)
+        let task = session.downloadTask(with: url) { localURL, response, error in
+            isDownloading = false
+            guard let localURL = localURL else {
+                updateMessage = "Download failed."
+                return
+            }
+            
+            do {
+                try FileManager.default.moveItem(at: localURL, to: destination)
+                NSWorkspace.shared.open(destination)
+                updateMessage = "Update downloaded! Please drag the new version into Applications."
+            } catch {
+                updateMessage = "Save failed: \(error.localizedDescription)"
+            }
+        }
+        
+        // Progress tracking hack for simple URLSession
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
+            if !isDownloading { timer.invalidate(); return }
+            if downloadProgress < 0.9 {
+                withAnimation { downloadProgress += 0.1 }
+            }
+        }
+        
+        task.resume()
     }
     
     private func checkForUpdates() {
