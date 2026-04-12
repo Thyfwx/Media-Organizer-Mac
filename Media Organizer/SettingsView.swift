@@ -32,6 +32,11 @@ struct MediaOrganizerSettingsView: View {
     @State private var isCheckingForUpdates = false
     @State private var updateMessage: String? = nil
     @State private var latestVersion: String? = nil
+    @State private var releaseNotes: String? = nil
+    
+    @State private var isDownloading = false
+    @State private var downloadProgress: Double = 0
+    @State private var downloadURL: URL? = nil
     
     private let currentVersion = "1.1.1" // Alpha 1.1.1
     
@@ -212,10 +217,6 @@ struct MediaOrganizerSettingsView: View {
         }
     }
     
-    @State private var isDownloading = false
-    @State private var downloadProgress: Double = 0
-    @State private var downloadURL: URL? = nil
-    
     var updatesTab: some View {
         VStack(spacing: 25) {
             Spacer()
@@ -231,44 +232,60 @@ struct MediaOrganizerSettingsView: View {
             VStack(spacing: 5) {
                 Text("Media Organizer")
                     .font(.title2).bold()
-                Text("Version \(currentVersion)")
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(Color.accentColor.opacity(0.1))
-                    .cornerRadius(4)
+                HStack {
+                    Text("Version \(currentVersion)")
+                    Text("Alpha")
+                        .font(.caption2).bold()
+                        .padding(.horizontal, 4)
+                        .background(Color.orange.opacity(0.2))
+                        .cornerRadius(3)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             
             if let message = updateMessage {
-                VStack(spacing: 10) {
+                VStack(spacing: 12) {
                     Text(message)
-                        .font(.subheadline)
+                        .font(.subheadline).bold()
                         .foregroundStyle(latestVersion != nil ? .green : .secondary)
                         .multilineTextAlignment(.center)
                     
+                    if let notes = releaseNotes {
+                        Text(notes)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                    }
+                    
                     if isDownloading {
-                        VStack(spacing: 4) {
+                        VStack(spacing: 6) {
                             ProgressView(value: downloadProgress)
                                 .progressViewStyle(.linear)
                                 .frame(width: 200)
-                            Text("\(Int(downloadProgress * 100))%")
+                            Text("Downloading update... \(Int(downloadProgress * 100))%")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
+                .padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.03)))
                 .padding(.horizontal)
             }
             
             if let version = latestVersion {
                 Button(action: { downloadAndInstall(version: version) }) {
                     if isDownloading {
-                        Text("Downloading...")
+                        Text("Please wait...")
                     } else {
-                        Label("Download & Update", systemImage: "arrow.down.circle.fill")
+                        Label("Update to v\(version) Now", systemImage: "sparkles")
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .disabled(isDownloading)
             } else {
                 Button(action: checkForUpdates) {
@@ -326,7 +343,7 @@ struct MediaOrganizerSettingsView: View {
     
     private func checkForUpdates() {
         isCheckingForUpdates = true
-        updateMessage = "Connecting to GitHub..."
+        updateMessage = "Checking servers..."
         
         guard let url = URL(string: "https://api.github.com/repos/Thyfwx/Media-Organizer-Mac/releases/latest") else {
             isCheckingForUpdates = false
@@ -342,15 +359,17 @@ struct MediaOrganizerSettingsView: View {
                    let tagName = json["tag_name"] as? String {
                     
                     let version = tagName.replacingOccurrences(of: "v", with: "").replacingOccurrences(of: "-alpha", with: "")
+                    let notes = json["body"] as? String
                     
                     if version > currentVersion {
                         latestVersion = version
-                        updateMessage = "A new version (v\(version)) is available!"
+                        releaseNotes = notes
+                        updateMessage = "New Update Available!"
                     } else {
-                        updateMessage = "You are up to date!"
+                        updateMessage = "You are up to date."
                     }
                 } else {
-                    updateMessage = "Could not check for updates. Please try again later."
+                    updateMessage = "Update server unreachable."
                 }
             }
         }.resume()
