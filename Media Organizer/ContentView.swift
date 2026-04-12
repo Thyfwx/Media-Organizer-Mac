@@ -42,7 +42,7 @@ struct ContentView: View {
     @AppStorage("cloudApiKey") private var cloudApiKey: String = ""
     @AppStorage("cloudModel") private var cloudModel: String = "gpt-4o-mini"
     @AppStorage("localModel") private var localModel: String = "llama3.2"
-    @AppStorage("createSubfolders") private var createSubfolders: Bool = true
+    @AppStorage("createSubfolders") private var createSubfolders: Bool = false
     @AppStorage("applyFinderTags") private var applyFinderTags: Bool = true
     
     // Casual Settings
@@ -240,52 +240,15 @@ struct ContentView: View {
             .padding()
             
             List {
-                ForEach($proposedChanges) { $change in
-                    HStack(spacing: 12) {
-                        if let thumb = change.thumbnail {
-                            Image(nsImage: thumb)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 44, height: 44)
-                                .cornerRadius(4)
-                        } else {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(.secondary.opacity(0.2))
-                                .frame(width: 44, height: 44)
-                                .overlay(Image(systemName: "doc").foregroundStyle(.secondary))
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            TextField("Name", text: $change.proposedName)
-                                .textFieldStyle(.plain)
-                                .font(.body.bold())
-                            
-                            HStack {
-                                Image(systemName: "folder")
-                                TextField("Category", text: $change.category)
-                                    .textFieldStyle(.plain)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                ForEach(proposedChanges) { change in
+                    ReviewRow(change: binding(for: change), onRemove: {
+                        let idToRemove = change.id
+                        DispatchQueue.main.async {
+                            withAnimation {
+                                proposedChanges.removeAll(where: { $0.id == idToRemove })
                             }
                         }
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            // Delay removal to allow TextField to finish editing and avoid crash
-                            let idToRemove = change.id
-                            DispatchQueue.main.async {
-                                withAnimation {
-                                    proposedChanges.removeAll(where: { $0.id == idToRemove })
-                                }
-                            }
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.vertical, 4)
+                    })
                 }
             }
             
@@ -310,6 +273,13 @@ struct ContentView: View {
             }
             .padding()
         }
+    }
+    
+    private func binding(for change: ProposedChange) -> Binding<ProposedChange> {
+        guard let index = proposedChanges.firstIndex(where: { $0.id == change.id }) else {
+            fatalError("Change not found")
+        }
+        return $proposedChanges[index]
     }
     
     var historyPopover: some View {
@@ -554,19 +524,18 @@ struct ContentView: View {
         
         let config: LLMConfig
         if aiMode == 0 {
-            // Apple Intelligence (Native On-Device)
-            config = LLMConfig(engineType: .appleIntelligence, endpoint: URL(string: "http://localhost")!, apiKey: "", model: "embedded", namingTemplate: namingTemplate, customInstructions: customInstructions)
+            config = LLMConfig(engineType: .coreAI, endpoint: URL(string: "http://localhost")!, apiKey: "", model: "heuristic", namingTemplate: namingTemplate, customInstructions: customInstructions)
         } else if aiMode == 1 {
-            // Local Ollama
+            config = LLMConfig(engineType: .proLocalAI, endpoint: URL(string: "http://localhost")!, apiKey: "", model: "embedded", namingTemplate: namingTemplate, customInstructions: customInstructions)
+        } else if aiMode == 2 {
             config = LLMConfig(engineType: .localOllama, endpoint: URL(string: "http://localhost:11434/v1/chat/completions")!, apiKey: "local", model: localModel, namingTemplate: namingTemplate, customInstructions: customInstructions)
         } else {
-            // Cloud API
             config = LLMConfig(engineType: .cloudAPI, endpoint: URL(string: cloudEndpoint) ?? URL(string: "https://api.openai.com/v1/chat/completions")!, apiKey: cloudApiKey, model: cloudModel, namingTemplate: namingTemplate, customInstructions: customInstructions)
         }
         
         let llm = LLMService(config: config)
         
-        if aiMode == 0 {
+        if aiMode == 1 {
             do {
                 isDownloadingModel = true
                 try await llm.ensureModelExists()
@@ -584,7 +553,7 @@ struct ContentView: View {
             let file = queuedFiles.removeFirst()
             statusMessage = "Analyzing: \(file.lastPathComponent)"
             
-            if aiMode == 2 && cloudApiKey.isEmpty {
+            if aiMode == 3 && cloudApiKey.isEmpty {
                 lastError = "Please enter an API Key in Settings."
                 break
             }
@@ -736,6 +705,52 @@ struct ContentView: View {
             queuedFiles.removeAll()
             proposedChanges.removeAll()
         }
+    }
+}
+
+// MARK: - ROW VIEW TO PREVENT CRASH
+struct ReviewRow: View {
+    @Binding var change: ProposedChange
+    let onRemove: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            if let thumb = change.thumbnail {
+                Image(nsImage: thumb)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 44, height: 44)
+                    .cornerRadius(4)
+            } else {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(.secondary.opacity(0.2))
+                    .frame(width: 44, height: 44)
+                    .overlay(Image(systemName: "doc").foregroundStyle(.secondary))
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                TextField("Name", text: $change.proposedName)
+                    .textFieldStyle(.plain)
+                    .font(.body.bold())
+                
+                HStack {
+                    Image(systemName: "folder")
+                    TextField("Category", text: $change.category)
+                        .textFieldStyle(.plain)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
     }
 }
 
