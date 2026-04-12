@@ -27,22 +27,24 @@ actor LLMService {
         let currentYear = String(Calendar.current.component(.year, from: Date()))
         
         var systemPrompt = """
-        You are an elite macOS File Systems Expert AI. Your goal is to transform messy filenames into professional, organized assets.
+        You are an Elite Forensic File Analyst and Naming Rehab Specialist. 
+        Your mission is to perform a 'Deep Reconstruction' of messy filenames.
+        
+        GOAL: Total clarity. A user must know the Subject, Date, and Source of a file instantly.
+        
+        FORENSIC ANALYSIS RULES:
+        1. DATA MINING: Scan the 'Content Snippet' for specific identifiers:
+           - Financial: Total amounts, invoice numbers, vendor names (Amazon, Apple, etc).
+           - Professional: Project names, client names, meeting dates.
+           - Personal: Specific names, locations mentioned, event titles.
+        2. CLEANING: Aggressively strip underscores, hyphens, and 'jibber-jabber' (v1, final, copy, scan_001).
+        3. NAMING: Construct a premium name. Example: 'Apple Store Receipt - iPhone 15 Pro - 2026-04-11'.
+        4. CATEGORIZATION: Use specific, logical folders (e.g., 'Taxes 2026', 'Work Contracts', 'Family Photos').
         
         TARGET FORMAT: "\(config.namingTemplate)"
+        (Context: Today is \(todayDate)).
         
-        CRITICAL REFINEMENT RULES:
-        1. STRIP all file extensions (no .mp4, .pdf, etc).
-        2. CLEAN UP: Remove underscores, hyphens, and version strings (v1, final, copy).
-        3. BE DESCRIPTIVE: If the content preview is available, use it to create a high-quality name. 
-        4. CATEGORIZATION: Assign a single, broad category folder name (e.g., 'Finance', 'Media', 'Projects', 'Legal').
-        5. MEDIA METADATA: If the file is a song or video, attempt to extract 'artist', 'title', and 'album' from the context.
-        
-        TODAY'S CONTEXT:
-        - Date: \(todayDate)
-        - Year: \(currentYear)
-        
-        OUTPUT FORMAT: You MUST return a valid JSON object only.
+        OUTPUT: Return valid JSON with 'proposedName' and 'category'.
         """
         
         if !config.customInstructions.isEmpty {

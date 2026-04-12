@@ -61,13 +61,19 @@ public struct ProposedChange: Identifiable {
 @MainActor
 public struct ProcessedFileRecord: Identifiable {
     public let id = UUID()
+    public let dateProcessed: Date
     public let originalURL: URL
     public let originalName: String
     public let finalURL: URL
+    public let category: String
+    public let summary: String?
     
-    public init(originalURL: URL, originalName: String, finalURL: URL) {
+    public init(dateProcessed: Date = Date(), originalURL: URL, originalName: String, finalURL: URL, category: String, summary: String?) {
+        self.dateProcessed = dateProcessed
         self.originalURL = originalURL
         self.originalName = originalName
         self.finalURL = finalURL
+        self.category = category
+        self.summary = summary
     }
 }
