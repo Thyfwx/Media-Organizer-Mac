@@ -33,7 +33,7 @@ struct MediaOrganizerSettingsView: View {
     @State private var updateMessage: String? = nil
     @State private var latestVersion: String? = nil
     
-    private let currentVersion = "1.0.1" // Alpha 1.0.1
+    private let currentVersion = "1.1.1" // Alpha 1.1.1
     
     var body: some View {
         TabView {
