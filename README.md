@@ -1,4 +1,4 @@
-# 📁 Media Organizer (macOS) - Alpha 1.1.1
+# 📁 Media Organizer (macOS)
 
 Media Organizer is a premium, AI-powered "Naming Rehab" tool for macOS. It transforms messy, "jibber-jabber" filenames and unorganized folders into professional, human-readable assets using cutting-edge Artificial Intelligence.
 
