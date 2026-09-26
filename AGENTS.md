@@ -2,6 +2,10 @@
 
 Native macOS app (Swift, SwiftUI) that renames and organizes files by reading their real content. Xcode project only.
 
+
+## Branches
+- Base every task on `main`, and open every PR against `main`.
+
 ## Build
 - There is no `Package.swift`, so `swift build` fails. Build with:
   `xcodebuild -project "Media Organizer.xcodeproj" -scheme "Media Organizer" -configuration Debug build`
