@@ -18,3 +18,10 @@ Native macOS app (Swift, SwiftUI) that renames and organizes files by reading th
 
 ## PRs
 - Small and focused, with a description of what changed, how you checked it, and what could not be verified.
+
+## On every PR: talk, and keep it green
+- Keep the PR description current: what changed, how you verified it, and anything still unfinished.
+- Reply to every review comment, and say what you changed in response.
+- Every check must pass. If one fails (a red X), open its log, fix the cause, and push again.
+- Never merge, close, or abandon a PR with a failing check. If you can't fix it, leave a comment explaining the failure and what is needed.
+- If the same check already fails on the base branch, say so in a comment and fix it in a separate small PR.
