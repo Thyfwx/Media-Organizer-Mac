@@ -20,4 +20,4 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: python3 scripts/check_code_attribution.py "$BASE_SHA" "$HEAD_SHA"
+        run: python3 Scripts/check_code_attribution.py "$BASE_SHA" "$HEAD_SHA"
