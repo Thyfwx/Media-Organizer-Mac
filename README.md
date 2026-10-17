@@ -1,64 +1,59 @@
-# 📁 Media Organizer (macOS)
+# Media Organizer
 
-Media Organizer is a premium, AI-powered "Naming Rehab" tool for macOS. It transforms messy, "jibber-jabber" filenames and unorganized folders into professional, human-readable assets using cutting-edge Artificial Intelligence.
+Media Organizer is a macOS app that renames messy files by reading what's inside them, so `IMG_4921_final_v2.pdf` becomes something like `Amazon Receipt - 2026-04-11.pdf`.
 
-![App Icon](Media%20Organizer/Assets.xcassets/AppIcon.appiconset/icon_512x512.png)
+![Media Organizer app icon](Media%20Organizer/Assets.xcassets/AppIcon.appiconset/icon_512x512.png)
 
-## ✨ The "Naming Rehab" Philosophy
-Stop wondering what `IMG_4921_final_v2.pdf` is. Media Organizer reads the *actual content* of your files to propose names that make sense at a glance (e.g., `Amazon Receipt - 2026-04-11.pdf`).
+## What it does
 
----
+You drop files in, the app proposes a new name for each one, and you approve the changes. It reads:
 
-## 🧠 AI Engines (The Brains)
-Media Organizer features three distinct AI strategies to suit your needs:
+- PDFs: the text of the first five pages.
+- Text files (`txt`, `md`, `csv`, `json`): the start of the file.
+- Images (`png`, `jpg`, `jpeg`, `heic`, `tiff`): text found in the picture, what the picture shows, and camera and capture date from its EXIF data.
+- Audio and video (`mp4`, `mov`, `m4a`, `mp3`, `wav`): duration and the tags already in the file. For `mp4`, `m4a` and `mov` files it can write artist, title and album back into the file.
 
-### 1. ✨ Apple Intelligence (Native Mode)
-The "Pro" choice for privacy and speed. 
-- **Privacy First:** 100% on-device. No data ever leaves your Mac.
-- **Elite Heuristics:** Uses a custom-built local engine (`EmbeddedAIEngine`) that performs deep context analysis.
-- **Content Awareness:** 
-    - **Documents:** Scans text for dates, sources (like Amazon, IRS), and subjects.
-    - **Media:** Extracts Artist, Title, and Album metadata from audio/video files.
-    - **Visuals:** Uses Computer Vision to classify images (e.g., distinguishing a "Golden Retriever" from a generic "Dog") and detects Screenshots automatically.
+Other things it does:
 
-### 2. 🦙 Local Ollama
-Hook into your local Ollama server (`llama3.2` recommended) for high-performance open-source modeling without the need for cloud API keys.
+- Renames in place by default. An option sorts files into category subfolders instead.
+- Name formats: name only, category and name, date and name, or date, category and name.
+- Adds the category as a Finder tag, which you can turn off in Settings.
+- Adds `(2)`, `(3)` and so on when a new name is already taken, so nothing is overwritten.
+- Keeps a history of what it renamed, with an Undo button on each entry.
+- Checks GitHub for a newer release when you press Check for Updates in Settings.
 
-### 3. ☁️ Cloud API (Pro Presets)
-Support for the world's most powerful models with zero-configuration presets:
-- **OpenAI:** GPT-4o, GPT-4o-mini
-- **Anthropic:** Claude 3.5 Sonnet
-- **Groq:** Llama 3.1 70B (for blazing fast speed)
+## Choosing an engine
 
----
+Settings has four engine choices.
 
-## 🚀 Key Features
+| Engine | What it does | Where your data goes |
+| --- | --- | --- |
+| Core | Built in rules that work from the text and metadata the app extracts. No network call. | Stays on your Mac. |
+| Ollama | Sends the file excerpt to a model on your own Ollama server at `localhost:11434`. The default model is `llama3.2`. | Stays on your Mac. |
+| Cloud | Sends the excerpt to OpenAI, Anthropic, Groq or an endpoint you enter. You supply the API key. | Goes to that provider. |
+| Pro Local | Present in Settings. Not described here, because I could not confirm it works in the released build. | Unknown. |
 
-### 🛠️ Intelligent "In-Place" Renaming
-By default, your files stay exactly where they are. No more losing files in deep subfolder structures unless you explicitly want them sorted.
+## Install
 
-### 🏷️ Native macOS Integration
-- **Finder Tags:** Automatically applies searchable macOS Finder tags based on the AI's categorization.
-- **ID3 Metadata:** Reaches inside `.mp4` and `.m4a` files to write Artist/Title/Album tags directly into the file.
-- **Spotlight Ready:** Every rehabilitated file is instantly indexed and searchable via Spotlight.
+1. Download `Media-Organizer-v1.1.1.dmg` from the [latest release](https://github.com/Thyfwx/Media-Organizer-Mac/releases/latest).
+2. Open it and drag the app into Applications.
 
-### 🎨 Liquid Glass UI
-A premium, native macOS experience featuring:
-- **Frosted Glass (Visual Effects):** A translucent, animated background that matches the system theme.
-- **Interactive Feedback:** Custom "Pop" and "Glass" sound effects and native macOS notifications.
-- **Descriptive History:** A beautiful log of every file you've organized, complete with category icons and "Undo" support.
+To build it yourself, open `Media Organizer.xcodeproj` in Xcode, or run:
 
-### 🛡️ Safety & Collision Handling
-- **Non-Destructive:** Files are safely moved/renamed.
-- **Collision Logic:** If multiple files get the same name, it automatically adds suffixes like `(1)`, `(2)`, etc., so no data is ever lost.
+```sh
+xcodebuild -project "Media Organizer.xcodeproj" -scheme "Media Organizer" -configuration Debug build
+```
 
----
+The project's deployment target is macOS 26.4. The release is marked alpha, and the repo has no automated tests.
 
-## 🛠️ Installation & Updates
+## Limits
 
-1. **Download:** Grab the latest `Media-Organizer-v1.1.1.dmg` from the [Releases](https://github.com/Thyfwx/Media-Organizer-Mac/releases/tag/v1.1.1-alpha) page.
-2. **Install:** Drag the app into your **Applications** folder.
-3. **Stay Current:** Use the built-in **"Check for Updates"** button in Settings. It connects directly to the GitHub API to let you know if a new version is ready.
+- Only the file types listed above are read for content. Anything else gets no content to work from.
+- With the Cloud engine, a short excerpt of each file leaves your Mac. Use Core or Ollama if that matters.
+- The release isn't confirmed to be signed or notarized. If macOS blocks it, right click the app and choose Open.
 
----
-*Created with ❤️ by Xavier Scott*
+## License
+
+MIT, see [LICENSE.md](LICENSE.md).
+
+Site: [thyfwxit.com](https://thyfwxit.com)
